@@ -170,6 +170,34 @@ TRACEBACK_EXCLUDE_FILES = {
     ### "unittest/case.py",
     ### "pytest/",
 }
+
+EXCLUDE_ATTRIBUTES = {
+    "Ok",
+    "Err",
+    "empty_init",
+    "is_Ok",
+    "is_Err",
+    "to_Err",
+    "add_Err_msg",
+    "raised",
+    "expect",
+    "expect_Err",
+    "unwrap",
+    "unwrap_or",
+    "apply",
+    "map",
+    "map_or",
+    "map_or_else",
+    "map_Err",
+    "iter",
+    "is_Ok_and",
+    "copy",
+    "register_code",
+    "error_code",
+    "error_code_description",
+    "str",
+}
+
 # %% --------------------------------------------------------------------------
 
 
@@ -640,14 +668,14 @@ class ResultErr(Exception):
                 return f"ResultErr(\n{s}\n)" if as_repr else f"\n{s}\n"
             else:
                 s = "".join(
-                    reversed(
-                        [
-                            "\n" + "".join(tb) + f"\n{self._str_code(c)} {m}"
-                            for c, m, tb in zip(self.code, self.msg, self.traceback_info)
-                        ]
-                    )
+                    [
+                        "".join(tb) + f"\n{self._str_code(c)} {m}"
+                        for c, m, tb in zip(self.code, self.msg, self.traceback_info)
+                    ]
                 )
-                return f"ResultErr({s}\n)" if as_repr else s.strip()
+                if len(self.traceback_info[0]) > 0:
+                    s = "\n" + s
+                return f"ResultErr({s}\n)" if as_repr else s
 
         if self.size == 1:
             s = f"{self._str_code(self.code[0])} {self.msg[0]}".strip()
@@ -1096,7 +1124,7 @@ class Result:
             self.add_Err_msg(f"{operation} resulted in an Exception.", add_traceback=False)
             self.add_Err_msg(f"{type(e).__name__}: {e}", self.error_code("Math_Op"), add_traceback=False)
             return self
-        err = Result(f"{operation} resulted in an Exception.", False)
+        err = Result(f"{operation} resulted in an Exception.", False, _levels=-5)
         err.add_Err_msg(f"{type(e).__name__}: {e}", self.error_code("Math_Op"), add_traceback=False)
         return err
 
@@ -1151,6 +1179,13 @@ class Result:
         if self.is_Err:
             self.add_Err_msg(f"VAR.{name} with VAR as Err variant", self.error_code("Attribute_While_Error_State"))
             return self
+        if name in EXCLUDE_ATTRIBUTES:
+            self.add_Err_msg(
+                f"{name} is an excluded attribute/method. Did you forget () on a method or put () on an attrib. If Ok(x.{name}) is what you want, then do Ok(x).expect().{name}",
+                self.error_code("Attribute"),
+            )
+            return self
+
         try:
             # Forward any unknown attribute to value in Ok(value) component
             attr = getattr(self._Ok, name)
