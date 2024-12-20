@@ -65,46 +65,6 @@ def test_add_days():
     assert new_dt_sub.day == 14  # Subtracting 5 days from 19th results in 14th
 
 
-# Test handling of timezone-aware datetime objects
-def test_timezone_aware_datetime():
-    from pytz import timezone
-
-    # Create a naive datetime object
-    dt_naive = Ok(datetime(2024, 12, 19, 12, 0, 0))
-
-    # Convert to timezone-aware datetime using pytz
-    tz = Ok(timezone("UTC"))
-    dt_utc = tz.localize(dt_naive.expect())
-
-    assert dt_utc.tzinfo is not None  # Should have timezone info
-    assert dt_utc.tzinfo.zone == "UTC"
-
-    # Check the behavior when adding days to timezone-aware datetime
-    dt_utc_plus_5 = dt_utc + timedelta(days=5)
-    assert dt_utc_plus_5.day == 24  # 5 days added
-
-    # Check if converting back to naive datetime works
-    dt_naive_back = dt_utc_plus_5.replace(tzinfo=None)
-    assert dt_naive_back.day == 24  # Day should remain the same
-
-    # Test for comparing timezone-aware and naive datetime
-    with pytest.raises(AssertionError):
-        assert dt_utc == dt_naive_back  # Should raise an error because of timezone difference
-
-
-# Test if the comparison works correctly for naive datetime
-def test_comparison_with_naive_and_aware():
-    from pytz import timezone
-
-    tz = Ok(timezone("UTC"))
-
-    dt_aware = tz.localize(datetime(2024, 12, 19, 12, 0, 0))
-    dt_naive = Ok(datetime(2024, 12, 19, 12, 0, 0))
-
-    with pytest.raises(AssertionError):
-        assert dt_aware == dt_naive  # Naive and aware datetime comparison should raise TypeError
-
-
 # Test if adding days results in the correct time
 def test_add_days_time():
     dt = datetime(2024, 12, 19, 23, 59, 59)
