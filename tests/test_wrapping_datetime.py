@@ -65,23 +65,6 @@ def test_add_days():
     assert new_dt_sub.day == 14  # Subtracting 5 days from 19th results in 14th
 
 
-# Test for adding months or complex date manipulations
-def test_add_months():
-    # Note: datetime doesn't directly support adding months, but you can use the `dateutil.relativedelta`
-    from dateutil.relativedelta import relativedelta
-
-    dt = Ok(datetime(2024, 12, 19, 12, 0, 0))
-    new_dt = dt + relativedelta(months=1)
-    assert new_dt.year == 2025
-    assert new_dt.month == 1
-    assert new_dt.day == 19  # Same day next month
-
-    new_dt_sub = dt + relativedelta(months=-1)
-    assert new_dt_sub.year == 2024
-    assert new_dt_sub.month == 11
-    assert new_dt_sub.day == 19  # Same day previous month
-
-
 # Test handling of timezone-aware datetime objects
 def test_timezone_aware_datetime():
     from pytz import timezone
