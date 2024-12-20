@@ -29,6 +29,7 @@ The two Result states are:
 - All attributes and methods not associated with `Result` are redirected to `value`.
   - `Ok(value).method()` is equivalent to `Ok(value.method())` and 
     `Ok(value).attrib` is equivalent to `Ok(value.attrib)`.
+  - `Ok(value).raised()` does NOT become `Ok(value.raised())` because `Result.raised()` exists.
 - Comparisons redirect to comparing the wrapped `value` if `Ok`. But mixed comparisons assume: 
   `Err(e) < Ok(value)` and `Err(e1) == Err(e2)` for any `value`, `e`, `e1`, and `e2`.
   - `Ok(value1) < Ok(value2) `&nbsp; &nbsp; ➣ &nbsp; `value1 < value`
@@ -76,134 +77,138 @@ Below are examples showcasing how to create and interact with a `ResultContainer
 ### Creating a Result
 
 ```python
-import numpy as np
-from ResultContainer import ResultContainer
+from ResultContainer import Result, Ok, Err
 
-# Create an empty deque that stores up to 10 float64 numbers
-d = ResultContainer(maxsize=10, dtype=np.float64)
+# Wrap values in Ok state:
+a = Result(5)   # Default is to store as Ok.
 
-# Create a deque with 5 int64 zeros (the deque is initialized to maxsize with 0).
-d = ResultContainer(maxsize=5, fill=0, dtype=np.int64)
+# Explicitly wrap values in Ok state:
+a = Result.Ok(5)
 
-# Create a deque from an array. Its maxsize is automatically set to 5.
-d = ResultContainer.array([1, 2, 3, 4, 5])
+# Wrap values in Ok state, Ok(value) is equalivent to Result.Ok()
+a = Ok(5)
 
-# Create a deque from an array. Its maxsize is set to 5.
-d = ResultContainer.array([1, 2, 3], 5)
+# Wrap values as an error 
+a = Result(5, False)   # Flag says it is an error, so stored as Err("5")
+                       #    Note "5" is the error message and NOT the value.
+# Explicitly wrap values in Err state:
+a = Result.Err(5)
+
+# Wrap values in Err state, Err(value) is equalivent to Result.Err()
+a = Err(5)
 
 ```
 
-### Adding to Right of The Deque
+### Math Operations with a Result
 
 ```python
-d = ResultContainer(maxsize=5, dtype=np.int64)
+# Addition, Subtraction, Multiplication and Division
+a = Result.Ok(5)
+b = Result.Ok(50)
+c = a + b         # c = Ok(55)
+d = c - 20        # d = Ok(35)
+e = d * 2         # e = Ok(70)
+e /= 10           # e = Ok(7)
+f = e / 0         # f = Err("a / b resulted in an Exception. | ZeroDivisionError: division by zero")
+g = f + 1         # g = Err("a / b resulted in an Exception. | ZeroDivisionError: division by zero | a + b with a as Err.")
 
-# Put a value to the right on the deque
-d.put(5)
-d.put(7)
-d.put(9)
-print(d)              # Output: ResultContainer([5, 7, 9])
-d.put(11)
-d.put(13)
-print(d)              # Output: ResultContainer([5, 7, 9, 11, 13])
-d.put(15)  # 5 is dropped
-print(d)              # Output: ResultContainer([7, 9, 11, 13, 15])
-
-d.putter([1, 2, 3])
-print(d)              # Output: ResultContainer([13, 15, 1, 2, 3])
-
-d.putter([-1, -2, -3, -4, -5, -6, -7])
-print(d)              # Output: ResultContainer([-3, -4, -5, -6, -7])
-
-d.putter([1, 2, 3, 4, 5])
-print(d)              # Output: ResultContainer([1, 2, 3, 4, 5])
 ```
 
-### Adding to Left of The Deque
+### Wrapping Objects
 
 ```python
-d = ResultContainer(maxsize=5, dtype=np.int64)
+from datetime import datetime, timedelta
 
-# Put a value to the right on the deque
-d.putleft(5)
-d.putleft(7)
-d.putleft(9)
-print(d)              # Output: ResultContainer([9, 7, 5])
-d.putleft(11)
-d.putleft(13)
-print(d)              # Output: ResultContainer([13, 11, 9, 7, 5])
-d.putleft(15)  # 5 is dropped
-print(d)              # Output: ResultContainer([15, 13, 11, 9, 7])
+# Wrap a datetime.datetime object
+dt = Ok(datetime(2024, 12, 19, 12, 0, 0))  # dt = Ok(2024-12-19 12:00:00)
 
-d.putterleft([1, 2, 3])
-print(d)              # Output: ResultContainer([3, 2, 1, 15, 13])
+# Grab the attributes
+y1 = dt.year                               # y1 = Ok(2024)
+y2 = dt.year.expect()                      # y2 = 2024  -> raises a ResultErr exception if not Ok.
 
-d.putterleft([-1, -2, -3, -4, -5, -6, -7])
-print(d)              # Output: ResultContainer([-7, -6, -5, -4, -3])
+# Use the methods
+new_dt = dt + timedelta(days=5)            # new_dt = Ok(2024-12-24 12:00:00)
+new_dt_sub = dt + timedelta(days=-5)       # new_dt = Ok(2024-12-14 12:00:00)
 
-d.putter([1, 2, 3, 4, 5])
-print(d)              # Output: ResultContainer([5, 4, 3, 2, 1])
+# Produce an invalid state
+dt_large = Ok(datetime(9999, 12, 31))      # dt_large = Ok(9999-12-31 00:00:00)
+bad_dt = dt + timedelta(days=10000)        # bad_dt = Err("a + b resulted in an Exception. | OverflowError: date value out of range")
+
+bad_dt.raised()                            # raises a ResultErr exception
 ```
 
-### Removing Elements
+### Raising Errors
 
 ```python
-d = ResultContainer.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+from ResultContainer import Result, Ok, Err
 
-# Remove and return the last element
-print(d)              # Output: ResultContainer([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
-rightmost_value = d.pop() 
-print(d)              # Output: ResultContainer([1, 2, 3, 4, 5, 6, 7, 8, 9])
-print(rightmost_value)# Output: 10
+x = Result(10)   # Ok(10)
+x /= 0           # Err("a /= b resulted in an Exception. | ZeroDivisionError: division by zero")
 
-# Remove and return the first element
-leftmost_value = d.popleft() 
-print(d)              # Output: ResultContainer([2, 3, 4, 5, 6, 7, 8, 9])
-print(leftmost_value) # Output: 1
+x.raised()  
 
-# Remove and return the third element
-third_value = d.drop(2) 
-print(d)              # Output: ResultContainer([2, 3, 5, 6, 7, 8, 9])
-print(third_value)# Output: 4
+# The exception raised is 
+#  (note that math operations do not log line numbers that the error occurs):
 
-# If the number 8 and 1 are found, remove the first appearance
-d.remove(8)
-print(d)              # Output: ResultContainer([2, 3, 5, 6, 7, 9])
-d.remove(1)           # Nothing happens
-print(d)              # Output: ResultContainer([2, 3, 5, 6, 7, 9])
+# Traceback (most recent call last):
+#   File "example.py", line 7, in <module>
+#     x.raised()  
+#     ^^^^^^^^^^
+#   File "ResultContainer/ResultContainer.py", line 957, in raised
+#     raise self._Err
+# ResultErr: 
+#   [1] a /= b resulted in an Exception.
+#  [12] ZeroDivisionError: division by zero
 ```
 
-### Slicing
 
 ```python
-d = ResultContainer.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9], maxsize=10)
+from ResultContainer import Result, Ok, Err
+from datetime import datetime, timedelta
 
-# Slice behaves like NumPy arrays, but be careful with indexes
-print( d[1:4] )    # Output: [1, 2, 3]
+dt = Result(datetime(9999, 12, 31))
 
-d[1:3] = [-1, -2]     # Output: [2, 3, 4]
-print(d)              # Output: ResultContainer([0, -1, -2, 3, 4, 5, 6, 7, 8, 9])
+bad_dt = dt + timedelta(days=10000)
 
-# Note that values move once maxsize is exceeded
-print( d[2] )         # Output: -2
-d.put(10)
-print(d)              # Output: ResultContainer([-1, -2, 3, 4, 5, 6, 7, 8, 9, 10])
-print( d[2] )         # Output: 3
-d.put(11)
-print(d)              # Output: ResultContainer([-2, 3, 4, 5, 6, 7, 8, 9, 10, 11])
-print( d[2] )         # Output: 4
-d.putleft(99)
-print(d)              # Output: ResultContainer([99, -2, 3, 4, 5, 6, 7, 8, 9, 10])
-print( d[2] )         # Output: 3
+bad_dt.raised()
 
-#Be careful about the size
-d = ResultContainer(maxsize=5)
-d.put(5)
-d.put(4)
-d.put(3)
-print(d)              # Output: ResultContainer([5, 4, 3])
-print( d[3] )         # Raises index error!!!
+# Not the exception says it occured on `line 6` 
+# despite being called on `line 8`
+
+# Traceback (most recent call last):
+#   File "example.py", line 8, in <module>
+#     bad_dt.raised()
+#   File "ResultContainer/ResultContainer.py", line 957, in raised
+#     raise self._Err
+# ResultErr: 
+#   File "ResultContainer/example.py", line 6, in <module>
+#     bad_dt = dt + timedelta(days=10000)
+#
+#   [1] a + b resulted in an Exception.
+#  [12] OverflowError: date value out of range
 ```
+
+### Passing Functions and Chaining Operations
+
+```python
+from math import sqrt
+# to use an external function, like sqrt
+# It must be passed to either apply or map or extracted with expect.
+a = Ok(9)         # Ok(9)
+b = a.map(sqrt)   # Ok(3.0)
+c = Ok(-9)        # Ok(-9)
+d = c.map(sqrt)   # Err("Result.apply exception. | ValueError: math domain error")
+e = sqrt(c.expect()) # raises an error
+
+plus1 = lambda x: x + 1
+a = Ok(5)
+b = Ok(0)
+c = (a / b).map_or(10, plus1).map_or(20, plus1).map_or(30, plus1) # c = Err() -> Ok(10) -> Ok(11) -> Ok(12)
+d = (a / 0).map_or(10, plus1).map_or(20, plus1).map_or(30, plus1) # d = Err() -> Ok(10) -> Ok(11) -> Ok(12)
+
+```
+
+
 
 ## Testing
 
