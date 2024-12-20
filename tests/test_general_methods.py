@@ -166,9 +166,11 @@ def test_to_err():
 # Test for `add_Err_msg` method
 def test_add_err_msg():
     result = Ok("Success")
-    result.add_Err_msg("New error message")
+    result.add_Err_msg("Add error message")
     assert result.is_Err
-    assert "New error message" in result.unwrap().msg
+    assert "Add error message" in result.unwrap().msg
+    assert 1 == result.unwrap().size
+    result.add_Err_msg("Add another error message")
     assert 2 == result.unwrap().size
 
 
