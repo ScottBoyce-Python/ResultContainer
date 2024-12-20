@@ -505,7 +505,7 @@ class ResultErr(Exception):
             self.msg += msg.msg
             self.code += msg.code
             self.traceback_info += msg.traceback_info
-        elif not isinstance(msg, str) and isinstance(msg, Sequence | Iterable):
+        elif not isinstance(msg, str) and isinstance(msg, (Sequence, Iterable)):
             dim = len(self.msg)
             self.msg += list(map(str.strip, map(str, msg)))
             dim = len(self.msg) - dim
@@ -1157,8 +1157,8 @@ class Result:
         if isinstance(value, ResultErr):
             return False
 
-        value_seq = isinstance(value, Sequence | Iterable)
-        ok_seq = isinstance(self._Ok, Sequence | Iterable)
+        value_seq = isinstance(value, (Sequence, Iterable))
+        ok_seq = isinstance(self._Ok, (Sequence, Iterable))
 
         if not ok_seq or (ok_seq and value_seq):
             return value == self._Ok
