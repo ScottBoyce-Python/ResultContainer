@@ -1083,7 +1083,7 @@ class Result:
                 return f'Ok("{self._Ok}")'
             return f"Ok({self._Ok})"
         else:
-            return f"Err(\"{' | '.join(f"{m}" for m in self._Err.msg)}\")"
+            return f'Err("{" | ".join(f"{m}" for m in self._Err.msg)}")'
 
     def _empty_error(self):
         if self._success is None:
