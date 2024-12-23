@@ -961,12 +961,15 @@ class Result:
         if error_msg != "":
             self._Err.append(error_msg, error_code, add_traceback, _levels=-4)
 
-    def raised(self, exception: Exception = None):
+    def raised(self, error_msg="", exception: Exception = None):
         self._empty_error()
         if not self._success:
+            if error_msg != "":
+                self.add_Err_msg(error_msg, error_code, add_traceback=False)
             if exception is None:
                 raise self._Err
             raise self._Err from exception
+        return self
 
     def expect(self, error_msg="", error_code=5):  # 5 -> ResultErr.error_code("Expect")
         self._empty_error()
