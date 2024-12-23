@@ -791,16 +791,17 @@ class Result:
         is_Err   (bool): True if the result is an error.
 
     Methods:
-        raised(exception=None):
-            If Err variant, then raise Err and optionally include exception.
+        raised(error_msg="", exception=None):
+            If  Ok variant, then returns Ok(value);
+            If Err variant, then raise Err and optionally include `from exception`.
 
         expect(error_msg=""):
-            Return the value wrapped in Ok or raise Err.
-            If error_msg is included, then it is added to the Err message.
+            If  Ok variant, then returns value from Ok(value);
+            If Err variant, then raise Err and optionally append error_msg and error_code to Err.
 
         expect_Err(ok_msg=""):
-            Return the error wrapped in Err(error) or raise ResultErr.
-            If ok_msg is included, then it is added to the raise ResultErr message.
+            If  Ok variant, then raise ResultErr message;
+            If Err variant, then returns error from Err(error). error is of type ResultErr.
 
         unwrap():
             Return the wrapped value in Ok(value) or error in Err(error).
@@ -838,7 +839,7 @@ class Result:
         map_Err(efunc):
             Maps a function to the Result.Err and another function to Result.Ok.
             For the Err(error) variant, returns `Result.Ok(efunc(error))`.
-              - If function call fails, returns `Result.Err("Result.map_err exception.)`.
+              - If function call fails, raises `Result.Err("Result.map_err exception.)`.
 
         iter():
             Returns an iterator of the value in Ok(value).
