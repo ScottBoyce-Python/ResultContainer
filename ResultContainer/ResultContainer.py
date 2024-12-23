@@ -113,6 +113,7 @@ except ImportError:
 
 import traceback
 from collections.abc import Sequence, Iterable, KeysView, ValuesView
+from copy import deepcopy as _deepcopy
 
 __all__ = ["Result", "ResultErr", "Ok", "Err"]
 
@@ -504,7 +505,7 @@ class ResultErr(Exception):
         if isinstance(msg, ResultErr):
             self.msg += msg.msg
             self.code += msg.code
-            self.traceback_info += msg.traceback_info
+            self.traceback_info += _deepcopy(msg.traceback_info)
         elif not isinstance(msg, str) and isinstance(msg, (Sequence, Iterable)):
             dim = len(self.msg)
             self.msg += list(map(str.strip, map(str, msg)))
@@ -1039,10 +1040,14 @@ class Result:
         self._empty_error()
         return self._success and func(self._Ok, *args, **kwargs)
 
-    def copy(self):
+    def copy(self, deepcopy=False):
         if self._success is None:
             return Result.empty_init()
-        return Result(self.unwrap(), self._success)
+        if self._success:
+            if deepcopy:
+                return Result(_deepcopy(self._Ok), self._success)
+            return Result(self._Ok, self._success)
+        return Result(self._Err, self._success)
 
     def register_code(self, code, description, error_code_group=None):
         """
