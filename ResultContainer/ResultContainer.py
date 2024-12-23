@@ -897,10 +897,17 @@ class Result:
         _levels=-3,
     ):
         self._g = error_code_group
+        if success and isinstance(value, ResultErr):
+            success = False
         if _empty_init:
             self._success = None
             self._Ok = ""
             self._Err = ""
+        elif isinstance(value, Result):
+            self._g = value._g
+            self._success = value._success
+            self._Ok = value if self._success else ""
+            self._Err = value._Err.copy() if not self._success else ResultErr()
         elif success:
             self._success = True
             self._Ok = value
