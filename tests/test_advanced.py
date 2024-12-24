@@ -24,7 +24,7 @@ def test_result_err_initialization():
         result.expect()
 
     with pytest.raises(ResultErr):
-        result.raised()
+        result.raises()
 
 
 # Edge Case Initialization
@@ -33,7 +33,7 @@ def test_result_ok_with_none():
     assert result.is_Ok is True
     assert result.unwrap() is None
     assert result.expect() is None
-    assert result.raised() == Ok(None)
+    assert result.raises() == Ok(None)
 
 
 def test_result_err_with_empty_string():
@@ -44,7 +44,7 @@ def test_result_err_with_empty_string():
         result.expect()
 
     with pytest.raises(ResultErr):
-        result.raised()
+        result.raises()
 
 
 # Iter Tests
@@ -111,12 +111,12 @@ def test_result_apply():
         error_result.expect()
 
     with pytest.raises(ResultErr):
-        error_result.raised()
+        error_result.raises()
 
     with pytest.raises(ResultErr):
         # apply returns Err for bad function
         mapped_result = Ok(0).apply(lambda x: 10 / x)
-        mapped_result.raised()
+        mapped_result.raises()
 
 
 def test_result_map():
@@ -132,7 +132,7 @@ def test_result_map():
         error_result.expect()
 
     with pytest.raises(ResultErr):
-        error_result.raised()
+        error_result.raises()
 
     with pytest.raises(ZeroDivisionError):
         # map raises exception for bad function
@@ -205,7 +205,7 @@ def test_result_apply_chain():
             .apply(lambda x: Result.Ok(x * 0))  # Ok(40)
             .apply(lambda x: Result.Ok(10 / x))  # Raises ZeroDiv Error
             .apply(lambda x: Result.Ok(x + 1))  # Appends to error message
-            .raised()  # Raises Exception if in Err state
+            .raises()  # Raises Exception if in Err state
         )
 
 
@@ -255,7 +255,7 @@ def test_division_by_zero():
     zero_result = Ok(0)
     with pytest.raises(ResultErr):
         ans = result / zero_result
-        ans.raised()
+        ans.raises()
 
 
 def test_modulo():
@@ -299,7 +299,7 @@ def test_error_message_integrity():
     result = Err(error_message)
     assert result.Err_msg == ["Critical Error"]
     with pytest.raises(ResultErr):
-        result.raised()
+        result.raises()
 
 
 def test_error_chaining_integrity():

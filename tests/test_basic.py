@@ -81,10 +81,10 @@ def test_resulterr_append():
 
 
 # Test for ResultErr raised
-def test_resulterr_raised():
-    err = ResultErr("This is a raised error", code=500)
+def test_resulterr_raises():
+    err = ResultErr("This is a raises error", code=500)
     with pytest.raises(ResultErr):
-        err.raised()
+        err.raises()
 
 
 # Test for expect() with Ok result

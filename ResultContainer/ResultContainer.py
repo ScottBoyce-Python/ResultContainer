@@ -24,7 +24,7 @@ Key Features:
 
 Error Handling:
     - The `ResultErr` class captures error messages, codes, and optional traceback information.
-    - Errors only raise an exception when requested (`expect` or `raised` methods).
+    - Errors only raise an exception when requested (`expect` or `raises` methods).
 
 Constructors:
     Result(value, success=True, error_msg="", error_code=1, error_code_group=1):
@@ -185,7 +185,7 @@ EXCLUDE_ATTRIBUTES = {
     "Err_msg",
     "Err_code",
     "Err_traceback",
-    "raised",
+    "raises",
     "expect",
     "expect_Err",
     "unwrap",
@@ -427,7 +427,7 @@ class ResultErr(Exception):
         error                     (bool): Returns true if in error status (ie, size > 0).
 
     Methods:
-        raised(note=""):
+        raises(note=""):
             Raise a ResultErr exception if error messages exist
             and optionally add the note to the end of exception.
 
@@ -469,23 +469,23 @@ class ResultErr(Exception):
         >>> err = ResultErr()              # empty error
         >>> print(err.error)
         False
-        >>> err.raised()                   # Nothing happens
+        >>> err.raises()                   # Nothing happens
         >>>
         >>> err.append("bad input")
-        >>> err.raised()                   # program terminates
+        >>> err.raises()                   # program terminates
         ResultErr: bad input
 
         >>> err = ResultErr("bad input")   # Initialized with an error
         >>> print(err.error)
         True
-        >>> err.raised()                   # program terminals
+        >>> err.raises()                   # program terminals
         ResultErr: bad input
 
         >>> err = ResultErr("bad input 1") # Initialized with an error
         >>> err.append("bad input 2")      # Second error message
         >>> print(err.error)
         True
-        >>> err.raised()                   # program terminates
+        >>> err.raises()                   # program terminates
         ResultErr:
         bad input 1
         bad input 2
@@ -618,7 +618,7 @@ class ResultErr(Exception):
             return self.__class__._error_codes[g]
         return self.__class__._error_codes[g][description]
 
-    def raised(self, note=""):
+    def raises(self, note=""):
         """
         Raise a ResultErr exception if there are error messages.
 
@@ -631,7 +631,7 @@ class ResultErr(Exception):
             raise self
 
     def expect(self, error_msg=""):
-        self.raised(error_msg)
+        self.raises(error_msg)
         return ResultErr()
 
     def unwrap(self, *args, **kwargs):
@@ -858,7 +858,7 @@ class Result:
             If  Ok variant, then raise ResultErr(ok_msg);
             If Err variant, then returns error in Err(error), which is type ResultErr.
 
-        raised(error_msg="", exception=None):
+        raises(error_msg="", exception=None):
             If  Ok variant, then returns Ok(value);
             If Err variant, then raise Err and optionally include `from exception`.
             Useful for check during chained operations
@@ -1075,7 +1075,7 @@ class Result:
         err.append(ok_msg, add_traceback=False)
         raise ResultErr(err)
 
-    def raised(self, error_msg="", exception: Exception = None):
+    def raises(self, error_msg="", exception: Exception = None):
         self._empty_error()
         if not self._success:
             if error_msg != "":
@@ -1371,14 +1371,14 @@ class Result:
                         res = attr(*args, **kwargs)
                         return Result(res) if res is not None else None
                     except Exception as e:
-                        return Result.Err(f"VAR.{name}() raised {e}", self.error_code("Method"), self._g)
+                        return Result.Err(f"VAR.{name}() raises {e}", self.error_code("Method"), self._g)
 
                 return method
             if isinstance(attr, Result):
                 return attr
             return Result(attr)
         except AttributeError:
-            self.add_Err_msg(f"VAR.{name} raised an AttributeError", self.error_code("Attribute"))
+            self.add_Err_msg(f"VAR.{name} raises an AttributeError", self.error_code("Attribute"))
             return self
 
     def __iter__(self):
