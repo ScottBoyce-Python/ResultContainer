@@ -29,7 +29,7 @@ The two Result states are:
 - All attributes and methods not associated with `Result` are redirected to `value`.
   - `Ok(value).method()` is equivalent to `Ok(value.method())` and 
     `Ok(value).attrib` is equivalent to `Ok(value.attrib)`.
-  - `Ok(value).raised()` does NOT become `Ok(value.raised())` because `Result.raised()` exists.
+  - `Ok(value).raises()` does NOT become `Ok(value.raises())` because `Result.raises()` exists.
 - Comparisons redirect to comparing the wrapped `value` if `Ok`. But mixed comparisons assume: 
   `Err(e) < Ok(value)` and `Err(e1) == Err(e2)` for any `value`, `e`, `e1`, and `e2`.
   - `Ok(value1) < Ok(value2) `&nbsp; &nbsp; ➣ &nbsp; `value1 < value`
@@ -54,7 +54,7 @@ There are methods built into `Result` to check if an error has been raised, or t
 
 - **Variants for Success and Failure**: Two variants, `Ok(value)` for successful outcomes, and `Err(e)` for errors that have resulted. Provides a flexible mechanism for chaining operations on the `Ok` value while propagating errors through `Err`.
 - **Attribute and Method Transparency**: Automatically passes attributes, methods, and math operations to the value contained within an `Ok`, otherwise propagates the `Err(e)`.
-- **Utility Methods**: Implements helper methods for error propagation, transformation, and querying (e.g., `.map()`, `.and_then()`, `.unwrap_or()`, `.expect()`) for concise and readable handling of success and error cases. 
+- **Utility Methods**: Implements helper methods for error propagation, transformation, and querying (e.g., `.map()`, `.apply()`, `.unwrap_or()`, `.expect()`, `.raises()`) for concise and readable handling of success and error cases. 
 
 ## Installation
 To install the module
@@ -134,7 +134,7 @@ new_dt_sub = dt + timedelta(days=-5)       # new_dt = Ok(2024-12-14 12:00:00)
 dt_large = Ok(datetime(9999, 12, 31))      # dt_large = Ok(9999-12-31 00:00:00)
 bad_dt = dt + timedelta(days=10000)        # bad_dt = Err("a + b resulted in an Exception. | OverflowError: date value out of range")
 
-bad_dt.raised()                            # raises a ResultErr exception
+bad_dt.raises()                            # raises a ResultErr exception
 ```
 
 ### Raising Errors
@@ -142,43 +142,44 @@ bad_dt.raised()                            # raises a ResultErr exception
 ```python
 from ResultContainer import Result, Ok, Err
 
-x = Result(10)   # Ok(10)
-x /= 0           # Err("a /= b resulted in an Exception. | ZeroDivisionError: division by zero")
+# raises() is a powerful check when chaining methods. 
+# It raises an exception if Err, otherwise returns the original Ok(value) 
+x = Result(10)   # x = Ok(10)
+y = x.raises()   # y = Ok(10)
+x /= 0           # x = Err("a /= b resulted in an Exception. | ZeroDivisionError: division by zero")
 
-x.raised()  
-
-# The exception raised is 
-#  (note that math operations do not log line numbers that the error occurs):
+y = x.raises()  # Raises the following exception:
 
 # Traceback (most recent call last):
 #   File "example.py", line 7, in <module>
-#     x.raised()  
+#     x.raises()  
 #     ^^^^^^^^^^
-#   File "ResultContainer/ResultContainer.py", line 957, in raised
+#   File "ResultContainer/ResultContainer.py", line 957, in raises
 #     raise self._Err
 # ResultErr: 
 #   [1] a /= b resulted in an Exception.
 #  [12] ZeroDivisionError: division by zero
 ```
 
+  
+
 
 ```python
-from ResultContainer import Result, Ok, Err
-from datetime import datetime, timedelta
-
-dt = Result(datetime(9999, 12, 31))
-
-bad_dt = dt + timedelta(days=10000)
-
-bad_dt.raised()
-
-# Not the exception says it occured on `line 6` 
-# despite being called on `line 8`
+1 | from ResultContainer import Result, Ok, Err
+2 | from datetime import datetime, timedelta
+3 | 
+4 | dt = Result(datetime(9999, 12, 31))
+5 | 
+6 | bad_dt = dt + timedelta(days=10000)
+7 | 
+8 | bad_dt.raises()  
+# Raises the following exception.
+#    Note the exception says it occured on `line 6` despite being called on `line 8`
 
 # Traceback (most recent call last):
 #   File "example.py", line 8, in <module>
-#     bad_dt.raised()
-#   File "ResultContainer/ResultContainer.py", line 957, in raised
+#     bad_dt.raises()
+#   File "ResultContainer/ResultContainer.py", line 957, in raises
 #     raise self._Err
 # ResultErr: 
 #   File "ResultContainer/example.py", line 6, in <module>
@@ -194,10 +195,11 @@ bad_dt.raised()
 from math import sqrt
 # to use an external function, like sqrt
 # It must be passed to either apply or map or extracted with expect.
-a = Ok(9)         # Ok(9)
-b = a.map(sqrt)   # Ok(3.0)
-c = Ok(-9)        # Ok(-9)
-d = c.map(sqrt)   # Err("Result.apply exception. | ValueError: math domain error")
+# apply converts Ok to Err if the func fails, while map raises an exception.
+a = Ok(9)            # Ok(9)
+b = a.apply(sqrt)    # Ok(3.0)
+c = Ok(-9)           # Ok(-9)
+d = c.apply(sqrt)    # Err("Result.apply exception. | ValueError: math domain error")
 e = sqrt(c.expect()) # raises an error
 
 plus1 = lambda x: x + 1
