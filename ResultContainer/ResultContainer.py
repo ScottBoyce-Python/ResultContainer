@@ -821,8 +821,8 @@ class Result:
         unwrap_or(default):
             Return the wrapped value in Ok(value) or default.
 
-        is_Ok_and(func, *args, **kwargs):
-            True if Ok(value) variant and func(value, *args, **kwargs) returns True,
+        is_Ok_and(ok_func, *args, **kwargs):
+            True if Ok(value) variant and ok_func(value, *args, **kwargs) returns True,
             otherwise False.
               - If function call fails, then raises exception.
 
@@ -983,22 +983,6 @@ class Result:
         self._empty_error()
         return not self._success
 
-    def to_Err(self, error_msg="", error_code=1, add_traceback=False):
-        self.add_Err_msg(error_msg, error_code, add_traceback)
-
-    def add_Err_msg(self, error_msg, error_code=1, add_traceback=True):
-        """Convert to error status and append error message and code."""
-        if self._success:
-            if error_msg == "" and self._Ok == "":
-                error_msg = EMPTY_ERROR_MSG
-            elif error_msg == "":
-                error_msg = str(self._Ok)
-            self._success = False
-            self._Ok = ""
-            self._Err = ResultErr("", 1, self._g)
-        if error_msg != "":
-            self._Err.append(error_msg, error_code, add_traceback, _levels=-4)
-
     def raised(self, error_msg="", exception: Exception = None):
         self._empty_error()
         if not self._success:
@@ -1120,18 +1104,44 @@ class Result:
             return iter([self._Ok])
         return iter([])
 
-    def is_Ok_and(self, func, *args, **kwargs):
+    def is_Ok_and(self, bool_ok_func, *args, **kwargs):
         self._empty_error()
-        return self._success and func(self._Ok, *args, **kwargs)
+        return self._success and bool_ok_func(self._Ok, *args, **kwargs)
 
     def copy(self, deepcopy=False):
         if self._success is None:
             return Result.empty_init()
-        if self._success:
+        if self._success and deepcopy:
+            return Result(_deepcopy(self._Ok), error_code_group=self._g)
+        return Result(self)
+
+    def update_result(self, value, create_new=False, deepcopy=False):
+        if create_new:
             if deepcopy:
-                return Result(_deepcopy(self._Ok), self._success)
-            return Result(self._Ok, self._success)
-        return Result(self._Err, self._success)
+                return Result(deepcopy(value), error_code_group=self._g)
+            return Result(value, error_code_group=self._g)
+        elif isinstance(value, ResultErr):
+            self._success = False
+            self._Ok = ""
+            self._Err = value
+        else:
+            self._success = True
+            self._Ok = value
+            self._Err = ResultErr()
+        return self
+
+    def add_Err_msg(self, error_msg, error_code=1, add_traceback=True):
+        """Convert to error status and append error message and code."""
+        if self._success:
+            if error_msg == "" and self._Ok == "":
+                error_msg = EMPTY_ERROR_MSG
+            elif error_msg == "":
+                error_msg = str(self._Ok)
+            self._success = False
+            self._Ok = ""
+            self._Err = ResultErr("", 1, self._g)
+        if error_msg != "":
+            self._Err.append(error_msg, error_code, add_traceback, _levels=-4)
 
     def register_code(self, code, description, error_code_group=None):
         """
