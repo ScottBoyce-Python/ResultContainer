@@ -173,19 +173,21 @@ TRACEBACK_EXCLUDE_FILES = {
 }
 
 EXCLUDE_ATTRIBUTES = {
+    "ResultErr",
     "Ok",
     "Err",
     "empty_init",
     "is_Ok",
     "is_Err",
-    "to_Err",
-    "add_Err_msg",
     "raised",
     "expect",
     "expect_Err",
     "unwrap",
     "unwrap_or",
     "apply",
+    "apply_or",
+    "apply_or_else",
+    "apply_Err",
     "map",
     "map_or",
     "map_or_else",
@@ -193,11 +195,20 @@ EXCLUDE_ATTRIBUTES = {
     "iter",
     "is_Ok_and",
     "copy",
+    "update_result",
+    "add_Err_msg",
     "register_code",
     "error_code",
     "error_code_description",
     "str",
+    "_empty_error",
+    "_operator_overload_prep",
+    "_success",
+    "_Ok",
+    "_Err",
+    "_g",
 }
+
 
 # %% --------------------------------------------------------------------------
 
@@ -791,6 +802,7 @@ class Result:
         is_Err   (bool): True if the result is an error.
 
     Methods:
+
         raised(error_msg="", exception=None):
             If  Ok variant, then returns Ok(value);
             If Err variant, then raise Err and optionally include `from exception`.
