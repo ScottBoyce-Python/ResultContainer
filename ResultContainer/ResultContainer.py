@@ -1270,30 +1270,32 @@ class Result:
         if isinstance(b, Result):
             b._empty_error()
             if not self._success and not b._success:
-                err = Result(self._Err, False, add_traceback=False)
+                err = Result(self._Err, add_traceback=True)
                 err.add_Err_msg(
                     f"{operation} with a and b as Err.", self.error_code("Op_On_Error"), add_traceback=False
                 )
                 return True, err
             if not b._success:
-                err = Result(b._Err, False, add_traceback=False)
+                err = Result(b._Err, add_traceback=True)
                 err.add_Err_msg(f"{operation} with b as Err.", self.error_code("Op_On_Error"), add_traceback=False)
                 return True, err
             if self._success:
                 return False, b._Ok  # no error
 
         if not self._success:
-            err = Result(self._Err, False, add_traceback=False)
+            err = Result(self._Err, add_traceback=True)
             err.add_Err_msg(f"{operation} with a as Err.", self.error_code("Op_On_Error"), add_traceback=False)
             return True, err
         return False, b  # no error
 
     def _operator_overload_error(self, e, operation: str, apply_to_self: bool):
         if apply_to_self:
-            self.add_Err_msg(f"{operation} resulted in an Exception.", add_traceback=False)
+            self.add_Err_msg(f"{operation} resulted in an Exception.", add_traceback=True)
             self.add_Err_msg(f"{type(e).__name__}: {e}", self.error_code("Math_Op"), add_traceback=False)
             return self
-        err = Result(f"{operation} resulted in an Exception.", False, _levels=-5)
+        err = Result(
+            f"{operation} resulted in an Exception.", False, error_code_group=self._g, add_traceback=True, _levels=-5
+        )
         err.add_Err_msg(f"{type(e).__name__}: {e}", self.error_code("Math_Op"), add_traceback=False)
         return err
 
