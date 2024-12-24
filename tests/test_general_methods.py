@@ -155,10 +155,10 @@ def test_chained():
     assert result.map_or(1, lambda x: -1 * x).apply(lambda x: x / 0).map_or_else(lambda x: 10, lambda x: 20) == 10
 
 
-# Test for `to_Err` method
+# Test for `add_Err_msg` method
 def test_to_err():
     result = Ok("Success")
-    result.to_Err("Converted to error")
+    result.add_Err_msg("Converted to error")
     assert result.is_Err
     assert "Converted to error" in result.unwrap().msg
 
