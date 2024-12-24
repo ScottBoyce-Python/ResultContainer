@@ -986,6 +986,7 @@ class Result:
         self._g = error_code_group
         if success and isinstance(value, ResultErr):
             success = False
+            self._g = value._g
         if _empty_init:
             self._success = None
             self._Ok = ""
@@ -1011,8 +1012,8 @@ class Result:
             )
 
     @classmethod
-    def Ok(cls, value):
-        return cls(value)
+    def Ok(cls, value, error_code_group=1):
+        return cls(value, error_code_group=error_code_group)
 
     @classmethod
     def Err(cls, error_msg, error_code=1, error_code_group=1):
@@ -1094,10 +1095,10 @@ class Result:
             try:
                 return Result(ok_func(self._Ok, *args, **kwargs), error_code_group=self._g)
             except Exception as e:
-                err = Result.Err("Result.apply exception.", self.error_code("Apply"))
+                err = Result.Err("Result.apply exception.", self.error_code("Apply"), self._g)
                 err.add_Err_msg(f"{type(e).__name__}: {e}", self.error_code("Apply"), add_traceback=False)
                 return err
-        res = Result.Err(self._Err)
+        res = Result(self._Err)
         res.add_Err_msg("Result.apply on Err.", self.error_code("Apply"))
         return res
 
@@ -1125,7 +1126,7 @@ class Result:
         try:
             return Result(err_func(err, *args, **kwargs), error_code_group=self._g)
         except Exception as e:
-            err = Result.Err("Result.apply_or_else exception.", self.error_code("Apply"))
+            err = Result.Err("Result.apply_or_else exception.", self.error_code("Apply"), self._g)
             err.add_Err_msg(f"{type(e).__name__}: {e}", self.error_code("Apply"), add_traceback=False)
             return err
 
@@ -1134,7 +1135,7 @@ class Result:
         if self._success:
             return self.copy()
         try:
-            return Result.Ok(err_func(self._Err, *args, **kwargs))
+            return Result(err_func(self._Err, *args, **kwargs), error_code_group=self._g)
         except Exception as e:
             err = self.copy()
             err.add_Err_msg("Result.apply_err exception.", self.error_code("Map"), add_traceback=True)
@@ -1145,7 +1146,7 @@ class Result:
         self._empty_error()
         if self._success:
             return Result(ok_func(self._Ok), error_code_group=self._g)
-        res = Result.Err(self._Err)
+        res = Result(self._Err)
         res.add_Err_msg("Result.map on Err.", self.error_code("Map"))
         return res
 
@@ -1165,7 +1166,7 @@ class Result:
         self._empty_error()
         if self._success:
             return self.copy()
-        return Result.Ok(err_func(self._Err), error_code_group=self._g)
+        return Result(err_func(self._Err), error_code_group=self._g)
 
     def iter(self):
         self._empty_error()
