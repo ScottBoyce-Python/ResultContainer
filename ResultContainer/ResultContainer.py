@@ -524,6 +524,13 @@ class ResultErr(Exception):
 
     def _process_message_and_code(self, msg, code, add_traceback=True, _levels=-2):
         """Helper to process messages and codes."""
+        if isinstance(msg, ResultErr):
+            self.msg += msg.msg
+            self.code += msg.code
+            self.traceback_info += _deepcopy(msg.traceback_info)
+            self._check_max_messages()
+            return
+
         if add_traceback and msg != "":
             if _levels > -2:
                 if _levels > -1:
@@ -534,11 +541,8 @@ class ResultErr(Exception):
             tb = [line for line in tb if not any(exclude in line for exclude in TRACEBACK_EXCLUDE_FILES)]
         else:
             tb = []
-        if isinstance(msg, ResultErr):
-            self.msg += msg.msg
-            self.code += msg.code
-            self.traceback_info += _deepcopy(msg.traceback_info)
-        elif not isinstance(msg, str) and isinstance(msg, (Sequence, Iterable)):
+
+        if not isinstance(msg, str) and isinstance(msg, (Sequence, Iterable)):
             dim = len(self.msg)
             self.msg += list(map(str.strip, map(str, msg)))
             dim = len(self.msg) - dim
@@ -552,6 +556,9 @@ class ResultErr(Exception):
                 self.code.append(code)
                 self.traceback_info.append(tb)
 
+        self._check_max_messages()
+
+    def _check_max_messages(self):
         if len(self.msg) > self.max_messages:
             self.msg = self.msg[: self.max_messages]
             self.code = self.code[: self.max_messages]
@@ -651,9 +658,7 @@ class ResultErr(Exception):
         else:
             self.max_messages = max_messages
 
-        if len(self.msg) > self.max_messages:
-            self.msg = self.msg[: self.max_messages]
-            self.code = self.code[: self.max_messages]
+        self._check_max_messages()
 
     def copy(self):
         """Return a copy of the ResultErr instance."""
