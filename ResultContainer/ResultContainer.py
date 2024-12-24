@@ -983,10 +983,12 @@ class Result:
         _empty_init=False,
         _levels=-3,
     ):
-        self._g = error_code_group
-        if success and isinstance(value, ResultErr):
+        if isinstance(value, ResultErr):
             success = False
             self._g = value._g
+        else:
+            self._g = error_code_group
+
         if _empty_init:
             self._success = None
             self._Ok = ""
@@ -1369,14 +1371,14 @@ class Result:
                 def method(*args, **kwargs):
                     try:
                         res = attr(*args, **kwargs)
-                        return Result(res) if res is not None else None
+                        return Result(res, error_code_group=self._g)  # if res is not None else None
                     except Exception as e:
                         return Result.Err(f"VAR.{name}() raises {e}", self.error_code("Method"), self._g)
 
                 return method
             if isinstance(attr, Result):
                 return attr
-            return Result(attr)
+            return Result(attr, error_code_group=self._g)
         except AttributeError:
             self.add_Err_msg(f"VAR.{name} raises an AttributeError", self.error_code("Attribute"))
             return self
@@ -1402,7 +1404,7 @@ class Result:
         if errored:
             return other
         try:
-            return Result(self._Ok + other)
+            return Result(self._Ok + other, error_code_group=self._g)
         except Exception as e:
             return self._operator_overload_error(e, op, False)
 
@@ -1412,7 +1414,7 @@ class Result:
         if errored:
             return other
         try:
-            return Result(other + self._Ok)
+            return Result(other + self._Ok, error_code_group=self._g)
         except Exception as e:
             return self._operator_overload_error(e, op, False)
 
@@ -1434,7 +1436,7 @@ class Result:
         if errored:
             return other
         try:
-            return Result(self._Ok - other)
+            return Result(self._Ok - other, error_code_group=self._g)
         except Exception as e:
             return self._operator_overload_error(e, op, False)
 
@@ -1444,7 +1446,7 @@ class Result:
         if errored:
             return other
         try:
-            return Result(other - self._Ok)
+            return Result(other - self._Ok, error_code_group=self._g)
         except Exception as e:
             return self._operator_overload_error(e, op, False)
 
@@ -1466,7 +1468,7 @@ class Result:
         if errored:
             return other
         try:
-            return Result(self._Ok * other)
+            return Result(self._Ok * other, error_code_group=self._g)
         except Exception as e:
             return self._operator_overload_error(e, op, False)
 
@@ -1476,7 +1478,7 @@ class Result:
         if errored:
             return other
         try:
-            return Result(other * self._Ok)
+            return Result(other * self._Ok, error_code_group=self._g)
         except Exception as e:
             return self._operator_overload_error(e, op, False)
 
@@ -1498,7 +1500,7 @@ class Result:
         if errored:
             return other
         try:
-            return Result(self._Ok / other)
+            return Result(self._Ok / other, error_code_group=self._g)
         except Exception as e:
             return self._operator_overload_error(e, op, False)
 
@@ -1508,7 +1510,7 @@ class Result:
         if errored:
             return other
         try:
-            return Result(other / self._Ok)
+            return Result(other / self._Ok, error_code_group=self._g)
         except Exception as e:
             return self._operator_overload_error(e, op, False)
 
@@ -1530,7 +1532,7 @@ class Result:
         if errored:
             return other
         try:
-            return Result(self._Ok // other)
+            return Result(self._Ok // other, error_code_group=self._g)
         except Exception as e:
             return self._operator_overload_error(e, op, False)
 
@@ -1540,7 +1542,7 @@ class Result:
         if errored:
             return other
         try:
-            return Result(other // self._Ok)
+            return Result(other // self._Ok, error_code_group=self._g)
         except Exception as e:
             return self._operator_overload_error(e, op, False)
 
@@ -1562,7 +1564,7 @@ class Result:
         if errored:
             return other
         try:
-            return Result(self._Ok % other)
+            return Result(self._Ok % other, error_code_group=self._g)
         except Exception as e:
             return self._operator_overload_error(e, op, False)
 
@@ -1572,7 +1574,7 @@ class Result:
         if errored:
             return other
         try:
-            return Result(other % self._Ok)
+            return Result(other % self._Ok, error_code_group=self._g)
         except Exception as e:
             return self._operator_overload_error(e, op, False)
 
@@ -1594,7 +1596,7 @@ class Result:
         if errored:
             return other
         try:
-            return Result(self._Ok**other)
+            return Result(self._Ok**other, error_code_group=self._g)
         except Exception as e:
             return self._operator_overload_error(e, op, False)
 
@@ -1604,7 +1606,7 @@ class Result:
         if errored:
             return other
         try:
-            return Result(other**self._Ok)
+            return Result(other**self._Ok, error_code_group=self._g)
         except Exception as e:
             return self._operator_overload_error(e, op, False)
 
@@ -1612,7 +1614,7 @@ class Result:
         self._empty_error()
         if self._success:
             try:
-                return Result(int(self._Ok))
+                return Result(int(self._Ok), error_code_group=self._g)
             except Exception as e:
                 self.add_Err_msg("Result(int(a)) resulted in an Exception.")
                 self.add_Err_msg(f"{type(e).__name__}: {e}", self.error_code("Int_Op"), add_traceback=False)
@@ -1624,7 +1626,7 @@ class Result:
         self._empty_error()
         if self._success:
             try:
-                return Result(float(self._Ok))
+                return Result(float(self._Ok), error_code_group=self._g)
             except Exception as e:
                 self.add_Err_msg("Result(float(a)) resulted in an Exception.")
                 self.add_Err_msg(f"{type(e).__name__}: {e}", self.error_code("Float_Op"), add_traceback=False)
