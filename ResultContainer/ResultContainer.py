@@ -1637,10 +1637,8 @@ class Result:
     def __lt__(self, other):  # compare self < other.
         # Assumes Err() < Ok() and Err(a) == Err(b)
         self._empty_error()
-        if isinstance(other, ResultErr):
-            other = Result(other, False)
-        elif not isinstance(other, Result):
-            other = Result(other, True)
+        if not isinstance(other, Result):
+            other = Result(other)
 
         if self.is_Ok and other.is_Ok:
             return self._Ok < other._Ok
@@ -1649,10 +1647,8 @@ class Result:
     def __le__(self, other):  # compare self <= other.
         # Assumes Err() < Ok() and Err(a) == Err(b)
         self._empty_error()
-        if isinstance(other, ResultErr):
-            other = Result(other, False)
-        elif not isinstance(other, Result):
-            other = Result(other, True)
+        if not isinstance(other, Result):
+            other = Result(other)
 
         if self.is_Ok and other.is_Ok:
             return self._Ok <= other._Ok
@@ -1661,10 +1657,8 @@ class Result:
     def __gt__(self, other):  # compare self > other.
         # Assumes Err() < Ok() and Err(a) == Err(b)
         self._empty_error()
-        if isinstance(other, ResultErr):
-            other = Result(other, False)
-        elif not isinstance(other, Result):
-            other = Result(other, True)
+        if not isinstance(other, Result):
+            other = Result(other)
 
         if self.is_Ok and other.is_Ok:
             return self._Ok > other._Ok
@@ -1673,10 +1667,8 @@ class Result:
     def __ge__(self, other):  # compare self >= other.
         # Assumes Err() < Ok() and Err(a) == Err(b)
         self._empty_error()
-        if isinstance(other, ResultErr):
-            other = Result(other, False)
-        elif not isinstance(other, Result):
-            other = Result(other, True)
+        if not isinstance(other, Result):
+            other = Result(other)
 
         if self.is_Ok and other.is_Ok:
             return self._Ok >= other._Ok
@@ -1685,10 +1677,8 @@ class Result:
     def __eq__(self, other):  # compare self == other.
         # Assumes Ok(a) == Ok(b) if a == b, but Err(a) == Err(b) for any a or b.
         self._empty_error()
-        if isinstance(other, ResultErr):
-            other = Result(other, False)
-        elif not isinstance(other, Result):
-            other = Result(other, True)
+        if not isinstance(other, Result):
+            other = Result(other)
 
         if self.is_Ok and other.is_Ok:
             return self._Ok == other._Ok
@@ -1697,10 +1687,8 @@ class Result:
     def __ne__(self, other):  # compare self != other.
         # Assumes Ok(a) == Ok(b) if a == b, but Err(a) == Err(b) for any a or b.
         self._empty_error()
-        if isinstance(other, ResultErr):
-            other = Result(other, False)
-        elif not isinstance(other, Result):
-            other = Result(other, True)
+        if not isinstance(other, Result):
+            other = Result(other)
 
         if self.is_Ok and other.is_Ok:
             return self._Ok != other._Ok
