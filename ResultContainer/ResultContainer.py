@@ -814,45 +814,71 @@ class Result:
             otherwise False.
               - If function call fails, then raises exception.
 
-        apply(func, *args, **kwargs):
+        apply(ok_func, *args, **kwargs):
             Maps a function to the Result to return a new Result.
-            For the Ok(value)  variant, returns `Result.Ok(func(value, *args, **kwargs))`.
+            For the Ok(value)  variant, returns `Result.Ok(ok_func(value, *args, **kwargs))`.
             For the Err(error) variant, returns `Result.Err(error)`.
-              - If function call fails, returns `Result.Err("Result.apply exception.)`.
+              - If ok_func fails, returns `Result.Err("Result.apply exception.)`.
 
-        map(func):
+        apply_or(default, ok_func, *args, **kwargs):
             Maps a function to the Result to return a new Result.
-            For the Ok(value)  variant, returns `Result.Ok(func(value))`.
+            For the Ok(value)  variant, returns `Result.Ok(ok_func(value, *args, **kwargs))`.
+            For the Err(error) variant, returns `Result.Ok(default)`.
+              - If ok_func fails, returns `Result(default)`.
+
+        apply_or_else(err_func, ok_func, *args, **kwargs):
+            Maps a function to the Result to return a new Result.
+            For the Ok(value)  variant, returns `Result.Ok( ok_func(value, *args, **kwargs))`.
+            For the Err(error) variant, returns `Result.Ok(err_func(error, *args, **kwargs))`.
+              - If ok_func fails, returns `Result.Ok(err_func(value, *args, **kwargs))`
+              - If ok_func and err_func fail, returns `Result.Err("Result.apply_or_else exception.)`.
+
+        apply_Err(err_func, *args, **kwargs):
+            Maps a function to the Result to return a new Result.
+            For the Ok(value)  variant, returns `Result.Ok(ok_func(value, *args, **kwargs))`.
+            For the Err(error) variant, returns `Result.Err(error)`.
+              - If err_func fails, returns `Result.Err("Result.apply exception.)`.
+
+        map(ok_func):
+            Maps a function to the Result to return a new Result.
+            For the Ok(value)  variant, returns `Result.Ok(ok_func(value))`.
             For the Err(error) variant, returns `Result.Err(error)`.
               - If function call fails, then raises exception.
 
-        map_or(default, func):
+        map_or(default, ok_func):
             Maps a function to the Result to return a new Result.
-            For the Ok(value)  variant, returns `Result.Ok(func(value))`.
+            For the Ok(value)  variant, returns `Result.Ok(ok_func(value))`.
             Otherwise                   returns `Result.Ok(Default)`.
 
-        map_or_else(efunc, ofunc):
+        map_or_else(err_func, ok_func):
             Maps a function to the Result.Err, otherwise return Result.
-            For the Ok(value)  variant, returns `Result.Ok(ofunc(value))`.
-            For the Err(error) variant, returns `Result.Ok(efunc(error))`.
+            For the Ok(value)  variant, returns `Result.Ok(ok_func(value))`.
+            For the Err(error) variant, returns `Result.Ok(err_func(error))`.
 
-        map_Err(efunc):
+        map_Err(err_func):
             Maps a function to the Result.Err and another function to Result.Ok.
-            For the Err(error) variant, returns `Result.Ok(efunc(error))`.
+            For the Ok(value)  variant, returns `Ok(value).copy()`.
+            For the Err(error) variant, returns `Result.Ok(err_func(error))`.
               - If function call fails, raises `Result.Err("Result.map_err exception.)`.
 
         iter():
             Returns an iterator of the value in Ok(value).
-            If value is not iterable, then only one iteration occurs.
-            The Err(error) variant will immediately terminate and not iterate.
-
-        to_Err(error_msg="", error_code=1, add_traceback=False):
-            Convert Ok(value) variant to Err(error) variant.
-            This is an inplace equivalent to Result(value, False, error_msg).
+            For the Ok(value)  variant,
+                if value is iterable: returns `iter(value)`
+                else:                 returns `iter([value])`  -> Only one iteration
+            For the Err(error) variant, returns `iter([])`.
+            This setup always iterates at least once for Ok()
+            and does not iterate for Err().
+            Note, this process will consume an iterable if it does not store values.
 
         add_Err_msg(error_msg, error_code=1, add_traceback=True)):
-            Add an error message to Err(error). Or if Ok(value) variant convert
-            to Err(error) variant and then add error_msg.
+            For the Ok(value)  variant, converts to Err(error_msg).
+            For the Err(error) variant, adds an error message.
+
+        update_result(value, create_new=False, deepcopy=False):
+            Update Result to hold value. Either updates the current instance or creates a new one.
+            Return the new Result. If value is not a ResultErr type, then returns Ok(value);
+            otherwise, returns Err(value).
 
         copy():
             Create a copy of the Result.
@@ -965,7 +991,7 @@ class Result:
         self._empty_error()
         if not self._success:
             if error_msg != "":
-                self.add_Err_msg(error_msg, error_code, add_traceback=False)
+                self.add_Err_msg(error_msg, 1, add_traceback=False)
             if exception is None:
                 raise self._Err
             raise self._Err from exception
@@ -995,11 +1021,11 @@ class Result:
         self._empty_error()
         return self._Ok if self._success else default
 
-    def apply(self, func, *args, **kwargs):
+    def apply(self, ok_func, *args, **kwargs):
         self._empty_error()
         if self._success:
             try:
-                return Result(func(self._Ok, *args, **kwargs))
+                return Result(ok_func(self._Ok, *args, **kwargs), error_code_group=self._g)
             except Exception as e:
                 err = Result.Err("Result.apply exception.", self.error_code("Apply"))
                 err.add_Err_msg(f"{type(e).__name__}: {e}", self.error_code("Apply"), add_traceback=False)
@@ -1008,36 +1034,71 @@ class Result:
         res.add_Err_msg("Result.apply on Err.", self.error_code("Apply"))
         return res
 
-    def map(self, func):
+    def apply_or(self, default, ok_func, *args, **kwargs):
         self._empty_error()
         if self._success:
-            return Result(func(self._Ok))
+            try:
+                return Result(ok_func(self._Ok, *args, **kwargs), error_code_group=self._g)
+            except Exception:
+                pass
+        return Result(default, error_code_group=self._g)
+
+    def apply_or_else(self, err_func, ok_func, *args, **kwargs):
+        self._empty_error()
+        if self._success:
+            try:
+                return Result(ok_func(self._Ok, *args, **kwargs), error_code_group=self._g)
+            except Exception:
+                try:
+                    return Result(err_func(self._Ok, *args, **kwargs), error_code_group=self._g)
+                except Exception:
+                    err = ResultErr("Result.apply_or_else exception.", self.error_code("Apply"), self._g, False)
+        else:
+            err = self._Err
+        try:
+            return Result(err_func(err, *args, **kwargs), error_code_group=self._g)
+        except Exception as e:
+            err = Result.Err("Result.apply_or_else exception.", self.error_code("Apply"))
+            err.add_Err_msg(f"{type(e).__name__}: {e}", self.error_code("Apply"), add_traceback=False)
+            return err
+
+    def apply_Err(self, err_func, *args, **kwargs):
+        self._empty_error()
+        if self._success:
+            return self.copy()
+        try:
+            return Result.Ok(err_func(self._Err, *args, **kwargs))
+        except Exception as e:
+            err = self.copy()
+            err.add_Err_msg("Result.apply_err exception.", self.error_code("Map"), add_traceback=True)
+            err.add_Err_msg(f"{type(e).__name__}: {e}", self.error_code("Map"), add_traceback=False)
+            return err
+
+    def map(self, ok_func):
+        self._empty_error()
+        if self._success:
+            return Result(ok_func(self._Ok), error_code_group=self._g)
         res = Result.Err(self._Err)
         res.add_Err_msg("Result.map on Err.", self.error_code("Map"))
         return res
 
-    def map_or(self, default, func):
+    def map_or(self, default, ok_func):
         self._empty_error()
         if not self._success:
-            return Result(default)
-        return Result(func(self._Ok))
+            return Result(default, error_code_group=self._g)
+        return Result(ok_func(self._Ok), error_code_group=self._g)
 
-    def map_or_else(self, efunc, ofunc):
+    def map_or_else(self, err_func, ok_func):
         self._empty_error()
         if self._success:
-            return Result(ofunc(self._Ok))
-        return Result(efunc(self._Err))
+            return Result(ok_func(self._Ok), error_code_group=self._g)
+        return Result(err_func(self._Err), error_code_group=self._g)
 
-    def map_Err(self, efunc):
+    def map_Err(self, err_func):
         self._empty_error()
         if self._success:
-            return Result(self._Ok)
-        try:
-            return Result.Ok(efunc(self._Err))
-        except Exception as e:
-            err = Result.Err("Result.map_err exception.", self.error_code("Map"))
-            err.add_Err_msg(f"{type(e).__name__}: {e}", self.error_code("Map"), add_traceback=False)
-            return err
+            return self.copy()
+        return Result.Ok(err_func(self._Err), error_code_group=self._g)
 
     def iter(self):
         self._empty_error()
