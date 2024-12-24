@@ -170,6 +170,9 @@ TRACEBACK_EXCLUDE_FILES = {
     ### "django/core/handlers/",
     ### "unittest/case.py",
     ### "pytest/",
+    "_hooks.py",
+    "_manager.py",
+    "_callers.py",
 }
 
 EXCLUDE_ATTRIBUTES = {
@@ -212,6 +215,21 @@ EXCLUDE_ATTRIBUTES = {
     "_g",
 }
 
+ATTRIBUTES_MISTAKES = {
+    "resulterr": "ResultErr",
+    "ok": "Ok",
+    "err": "Err",
+    "is_ok": "is_Ok",
+    "is_err": "is_Err",
+    "err_msg": "Err_msg",
+    "err_code": "Err_code",
+    "err_traceback": "Err_traceback",
+    "expect_err": "expect_Err",
+    "apply_err": "apply_Err",
+    "map_err": "map_Err",
+    "is_ok_and": "is_Ok_and",
+    "add_err_msg": "add_Err_msg",
+}
 
 # %% --------------------------------------------------------------------------
 
@@ -1318,6 +1336,13 @@ class Result:
         Returns:
             The result of the attribute wrapped as a Result or modifies underlying value.
         """
+        if name in ATTRIBUTES_MISTAKES:
+            self.add_Err_msg(
+                f"Result.{name} is a possible case mistake. Did you mean Result.{ATTRIBUTES_MISTAKES[name]} instead? Or did you forget () on a method or put () on an attrib. If Ok(x.{name}) is what you want, then do Ok(x).expect().{name}",
+                self.error_code("Attribute"),
+            )
+            return self
+
         if name in EXCLUDE_ATTRIBUTES:
             self.add_Err_msg(
                 f"{name} is an excluded attribute/method. Did you forget () on a method or put () on an attrib. If Ok(x.{name}) is what you want, then do Ok(x).expect().{name}",
@@ -1340,7 +1365,7 @@ class Result:
                         res = attr(*args, **kwargs)
                         return Result(res) if res is not None else None
                     except Exception as e:
-                        return Result.Err(f"VAR.{name}() raised {e}", self.error_code("Method"))
+                        return Result.Err(f"VAR.{name}() raised {e}", self.error_code("Method"), self._g)
 
                 return method
             if isinstance(attr, Result):
