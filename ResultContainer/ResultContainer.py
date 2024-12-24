@@ -179,6 +179,9 @@ EXCLUDE_ATTRIBUTES = {
     "empty_init",
     "is_Ok",
     "is_Err",
+    "Err_msg",
+    "Err_code",
+    "Err_traceback",
     "raised",
     "expect",
     "expect_Err",
@@ -801,25 +804,41 @@ class Result:
         is_Ok    (bool): True if the result is a  success.
         is_Err   (bool): True if the result is an error.
 
+        Err_msg (list[str]):
+            For the Ok(value)  variant, returns `[]`.
+            For the Err(error) variant, returns list of error messages.
+                Equivalent to `Err(error).unwrap().msg`
+
+        Err_code (list[int]):
+            For the Ok(value)  variant, returns `[]`.
+            For the Err(error) variant, returns list of error codes.
+                Equivalent to `Err(error).unwrap().code`
+
+        Err_traceback (list[list[str]]):
+            For the Ok(value)  variant, returns `[]`.
+            For the Err(error) variant, returns list of traceback lines.
+                Equivalent to `Err(error).unwrap().traceback_info`
+
     Methods:
-
-        raised(error_msg="", exception=None):
-            If  Ok variant, then returns Ok(value);
-            If Err variant, then raise Err and optionally include `from exception`.
-
-        expect(error_msg=""):
-            If  Ok variant, then returns value from Ok(value);
-            If Err variant, then raise Err and optionally append error_msg and error_code to Err.
-
-        expect_Err(ok_msg=""):
-            If  Ok variant, then raise ResultErr message;
-            If Err variant, then returns error from Err(error). error is of type ResultErr.
 
         unwrap():
             Return the wrapped value in Ok(value) or error in Err(error).
 
         unwrap_or(default):
-            Return the wrapped value in Ok(value) or default.
+            Return the wrapped value in Ok(value) or return default.
+
+        expect(error_msg=""):
+            If  Ok variant, then returns value from value;
+            If Err variant, then raise Err and optionally append error_msg to it.
+
+        expect_Err(ok_msg=""):
+            If  Ok variant, then raise ResultErr(ok_msg);
+            If Err variant, then returns error in Err(error), which is type ResultErr.
+
+        raised(error_msg="", exception=None):
+            If  Ok variant, then returns Ok(value);
+            If Err variant, then raise Err and optionally include `from exception`.
+            Useful for check during chained operations
 
         is_Ok_and(ok_func, *args, **kwargs):
             True if Ok(value) variant and ok_func(value, *args, **kwargs) returns True,
@@ -892,8 +911,15 @@ class Result:
             Return the new Result. If value is not a ResultErr type, then returns Ok(value);
             otherwise, returns Err(value).
 
-        copy():
+        copy(deepcopy=False):
             Create a copy of the Result.
+            If deepcopy=True, the returns Result(deepcopy(value)).
+
+        register_code(code, description, error_code_group=None):
+            Register a specific code and description for the group number error_code_group.
+
+        error_code(code=None, error_code_group=None):
+            Get an error code and description for a specific code group.
 
     Example Usage:
         >>> result = Result.Ok("Success")
@@ -983,15 +1009,31 @@ class Result:
         self._empty_error()
         return not self._success
 
-    def raised(self, error_msg="", exception: Exception = None):
+    @property
+    def Err_msg(self):
+        if self._success:
+            return []
+        return self._Err.msg
+
+    @property
+    def Err_code(self):
+        if self._success:
+            return []
+        return self._Err.code
+
+    @property
+    def Err_traceback(self):
+        if self._success:
+            return []
+        return self._Err.traceback_info
+
+    def unwrap(self):
         self._empty_error()
-        if not self._success:
-            if error_msg != "":
-                self.add_Err_msg(error_msg, 1, add_traceback=False)
-            if exception is None:
-                raise self._Err
-            raise self._Err from exception
-        return self
+        return self._Ok if self._success else self._Err
+
+    def unwrap_or(self, default):
+        self._empty_error()
+        return self._Ok if self._success else default
 
     def expect(self, error_msg="", error_code=5):  # 5 -> ResultErr.error_code("Expect")
         self._empty_error()
@@ -1009,13 +1051,19 @@ class Result:
         err.append(ok_msg, add_traceback=False)
         raise ResultErr(err)
 
-    def unwrap(self):
+    def raised(self, error_msg="", exception: Exception = None):
         self._empty_error()
-        return self._Ok if self._success else self._Err
+        if not self._success:
+            if error_msg != "":
+                self.add_Err_msg(error_msg, 1, add_traceback=False)
+            if exception is None:
+                raise self._Err
+            raise self._Err from exception
+        return self
 
-    def unwrap_or(self, default):
+    def is_Ok_and(self, bool_ok_func, *args, **kwargs):
         self._empty_error()
-        return self._Ok if self._success else default
+        return self._success and bool_ok_func(self._Ok, *args, **kwargs)
 
     def apply(self, ok_func, *args, **kwargs):
         self._empty_error()
@@ -1104,16 +1152,18 @@ class Result:
             return iter([self._Ok])
         return iter([])
 
-    def is_Ok_and(self, bool_ok_func, *args, **kwargs):
-        self._empty_error()
-        return self._success and bool_ok_func(self._Ok, *args, **kwargs)
-
-    def copy(self, deepcopy=False):
-        if self._success is None:
-            return Result.empty_init()
-        if self._success and deepcopy:
-            return Result(_deepcopy(self._Ok), error_code_group=self._g)
-        return Result(self)
+    def add_Err_msg(self, error_msg, error_code=1, add_traceback=True):
+        """Convert to error status and append error message and code."""
+        if self._success:
+            if error_msg == "" and self._Ok == "":
+                error_msg = EMPTY_ERROR_MSG
+            elif error_msg == "":
+                error_msg = str(self._Ok)
+            self._success = False
+            self._Ok = ""
+            self._Err = ResultErr("", 1, self._g)
+        if error_msg != "":
+            self._Err.append(error_msg, error_code, add_traceback, _levels=-4)
 
     def update_result(self, value, create_new=False, deepcopy=False):
         if create_new:
@@ -1130,18 +1180,12 @@ class Result:
             self._Err = ResultErr()
         return self
 
-    def add_Err_msg(self, error_msg, error_code=1, add_traceback=True):
-        """Convert to error status and append error message and code."""
-        if self._success:
-            if error_msg == "" and self._Ok == "":
-                error_msg = EMPTY_ERROR_MSG
-            elif error_msg == "":
-                error_msg = str(self._Ok)
-            self._success = False
-            self._Ok = ""
-            self._Err = ResultErr("", 1, self._g)
-        if error_msg != "":
-            self._Err.append(error_msg, error_code, add_traceback, _levels=-4)
+    def copy(self, deepcopy=False):
+        if self._success is None:
+            return Result.empty_init()
+        if self._success and deepcopy:
+            return Result(_deepcopy(self._Ok), error_code_group=self._g)
+        return Result(self)
 
     def register_code(self, code, description, error_code_group=None):
         """
@@ -1274,10 +1318,6 @@ class Result:
         Returns:
             The result of the attribute wrapped as a Result or modifies underlying value.
         """
-
-        if self.is_Err:
-            self.add_Err_msg(f"VAR.{name} with VAR as Err variant", self.error_code("Attribute_While_Error_State"))
-            return self
         if name in EXCLUDE_ATTRIBUTES:
             self.add_Err_msg(
                 f"{name} is an excluded attribute/method. Did you forget () on a method or put () on an attrib. If Ok(x.{name}) is what you want, then do Ok(x).expect().{name}",
@@ -1285,6 +1325,9 @@ class Result:
             )
             return self
 
+        if self.is_Err:
+            self.add_Err_msg(f"VAR.{name} with VAR as Err variant", self.error_code("Attribute_While_Error_State"))
+            return self
         try:
             # Forward any unknown attribute to value in Ok(value) component
             attr = getattr(self._Ok, name)
