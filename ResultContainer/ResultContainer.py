@@ -958,7 +958,12 @@ class Result:
             For the Err(error) variant, returns `Ok(err_func(error))`.
               - If function call fails, raises `Err("Result.map_err exception.)`.
 
-        iter():
+        iter(unwrap=True, expand=False):
+            Returns an iterator of the value in Ok(value).
+            if unwrap is False returns iter_wrap(expand)
+            if unwrap is True  returns iter_unwrap(expand)
+
+        iter_unwrap(expand=False):
             Returns an iterator of the value in Ok(value).
             For the Ok(value)  variant,
                 if value is iterable: returns `iter(value)`
@@ -967,6 +972,13 @@ class Result:
             This setup always iterates at least once for Ok() and does not iterate for Err().
             If expand is True, then returns `list(iter_unwrap())`.
             Note, this process will consume an iterable if it does not store values.
+
+        iter_wrap(expand=False):
+            Returns an iterator of the value in Ok(value) with each
+            iterated item being wrapped as a Result.
+            That is, each `item` is returned as `Ok(item)`,
+            unless type(item) is ResultErr, then returns Err(item).
+            If expand is True, then returns `list(iter_wrap())`.
 
         add_Err_msg(error_msg, error_code=1, add_traceback=True)):
             For the Ok(value)  variant, converts to Err(error_msg).
@@ -1204,12 +1216,28 @@ class Result:
             return self.copy()
         return Result(err_func(self._val), error_code_group=self._g)
 
-    def iter(self):
+    def iter_wrap(self, expand=False):
+        if expand:
+            Result(list(self.iter_wrap()))
+        if self._success:
+            if isinstance(self._val, Iterable):
+                return iter(map(Result, self._val))
+            return iter([self])
+        return iter([])
+
+    def iter_unwrap(self, expand=False):
+        if expand:
+            return list(self.iter_unwrap())
         if self._success:
             if isinstance(self._val, Iterable):
                 return iter(self._val)
             return iter([self._val])
         return iter([])
+
+    def iter(self, unwrap=True, expand=False):
+        if unwrap:
+            return self.iter_unwrap(expand)
+        return self.iter_wrap(expand)
 
     def add_Err_msg(self, error_msg, error_code=1, add_traceback=True):
         """Convert to error status and append error message and code."""
@@ -1219,8 +1247,7 @@ class Result:
             elif error_msg == "":
                 error_msg = str(self._val)
             self._success = False
-            self._val = ""
-            self._val = ResultErr("", 1, self._g)
+            self._val = ResultErr(error_code_group=self._g)
         if error_msg != "":
             self._val.append(error_msg, error_code, add_traceback, _levels=-4)
 
