@@ -53,7 +53,7 @@ Example Usage:
     Traceback (most recent call last):
       File "<string>", line 1, in <module>
       File "./ResultContainer/ResultContainer.py", line 943, in expect
-      raise self._Err
+      raise self._val
         ResultErr:
         File "./ResultContainer/ResultContainer.py", line 6, in <module>
             error_result = Err("Operation failed")
@@ -210,8 +210,8 @@ EXCLUDE_ATTRIBUTES = {
     # "_empty_error",
     "_operator_overload_prep",
     "_success",
-    "_Ok",
-    "_Err",
+    # "_Ok",
+    # "_Err",
     "_g",
 }
 
@@ -786,7 +786,7 @@ class ResultErr(Exception):
         elif isinstance(other, Result):
             if other.is_Ok:
                 return False
-            other = other._Err.code
+            other = other._val.code
         return self.code == other
 
 
@@ -1007,8 +1007,7 @@ class Result:
 
     ResultErr = ResultErr
     _success: bool
-    _Ok: object
-    _Err: ResultErr
+    _val: object
     _g: int
 
     def __init__(
@@ -1031,23 +1030,19 @@ class Result:
 
         if _empty_init:
             self._success = None
-            self._Ok = ""
-            self._Err = ""
+            self._val = None
         elif isinstance(value, Result):
-            self._g = value._g
+            self._g = value._g;
             self._success = value._success
-            self._Ok = value if self._success else ""
-            self._Err = value._Err.copy() if not self._success else ResultErr()
+            self._val = value if self._success else value._val.copy()
         elif success:
             self._success = True
-            self._Ok = value
-            self._Err = ResultErr()
+            self._val = value
         else:
             self._success = False
-            self._Ok = ""
             if error_msg == "" and value == "":
                 error_msg = EMPTY_ERROR_MSG
-            self._Err = (
+            self._val = (
                 ResultErr(error_msg, error_code, self._g, add_traceback, _levels=_levels)
                 if error_msg != ""
                 else ResultErr(value, error_code, self._g, add_traceback, _levels=_levels)
@@ -1081,44 +1076,38 @@ class Result:
             value stored in Ok(value) or raise ResultErr
         """
         if self._success:
-            return self._Ok
+            return self._val
         self.add_Err_msg("Result.Ok attribute for Err variant", 15, add_traceback=True)  # 15: "not_Ok",
-        raise self._Err
+        raise self._val
 
     @property
     def Err_msg(self):
-        if self._success:
-            return []
-        return self._Err.msg
+        return [] if self._success else self._val.msg
 
     @property
     def Err_code(self):
-        if self._success:
-            return []
-        return self._Err.code
+        return [] if self._success else self._val.code
 
     @property
     def Err_traceback(self):
-        if self._success:
-            return []
-        return self._Err.traceback_info
+        return [] if self._success else self._val.traceback_info
 
     def unwrap(self):
-        return self._Ok if self._success else self._Err
+        return self._val
 
     def unwrap_or(self, default):
-        return self._Ok if self._success else default
+        return self._val if self._success else default
 
     def expect(self, error_msg="", error_code=5):  # 5 -> ResultErr.error_code("Expect")
         if self._success:
-            return self._Ok
+            return self._val
         if error_msg != "":
             self.add_Err_msg(error_msg, error_code, add_traceback=False)
-        raise self._Err
+        raise self._val
 
     def expect_Err(self, ok_msg="", error_code=5):  # 5 -> ResultErr.error_code("Expect")
         if not self._success:
-            return self._Err
+            return self._val
         err = ResultErr("Result.expect_err() is Ok.", error_code, self._g, add_traceback=False)
         err.append(ok_msg, add_traceback=False)
         raise ResultErr(err)
@@ -1128,27 +1117,27 @@ class Result:
             return self
         if error_msg != "":
             self.add_Err_msg(error_msg, error_code, add_traceback=False)
-        raise self._Err  # raisde exception do to error
+        raise self._val  # raisde exception do to error
 
     def is_Ok_and(self, bool_ok_func, *args, **kwargs):
-        return self._success and bool_ok_func(self._Ok, *args, **kwargs)
+        return self._success and bool_ok_func(self._val, *args, **kwargs)
 
     def apply(self, ok_func, *args, **kwargs):
         if self._success:
             try:
-                return Result(ok_func(self._Ok, *args, **kwargs), error_code_group=self._g)
+                return Result(ok_func(self._val, *args, **kwargs), error_code_group=self._g)
             except Exception as e:
                 err = Result.as_Err("Result.apply exception.", self.error_code("Apply"), self._g)
                 err.add_Err_msg(f"{type(e).__name__}: {e}", self.error_code("Apply"), add_traceback=False)
                 return err
-        res = Result(self._Err)
+        res = Result(self._val)
         res.add_Err_msg("Result.apply on Err.", self.error_code("Apply"))
         return res
 
     def apply_or(self, default, ok_func, *args, **kwargs):
         if self._success:
             try:
-                return Result(ok_func(self._Ok, *args, **kwargs), error_code_group=self._g)
+                return Result(ok_func(self._val, *args, **kwargs), error_code_group=self._g)
             except Exception:
                 pass
         return Result(default, error_code_group=self._g)
@@ -1156,14 +1145,14 @@ class Result:
     def apply_or_else(self, err_func, ok_func, *args, **kwargs):
         if self._success:
             try:
-                return Result(ok_func(self._Ok, *args, **kwargs), error_code_group=self._g)
+                return Result(ok_func(self._val, *args, **kwargs), error_code_group=self._g)
             except Exception:
                 try:
-                    return Result(err_func(self._Ok, *args, **kwargs), error_code_group=self._g)
+                    return Result(err_func(self._val, *args, **kwargs), error_code_group=self._g)
                 except Exception:
                     err = ResultErr("Result.apply_or_else exception.", self.error_code("Apply"), self._g, False)
         else:
-            err = self._Err
+            err = self._val
         try:
             return Result(err_func(err, *args, **kwargs), error_code_group=self._g)
         except Exception as e:
@@ -1179,7 +1168,7 @@ class Result:
         if self._success:
             return self.copy()
         try:
-            return Result(err_func(self._Err, *args, **kwargs), error_code_group=self._g)
+            return Result(err_func(self._val, *args, **kwargs), error_code_group=self._g)
         except Exception as e:
             err = self.copy()
             err.add_Err_msg("Result.apply_err exception.", self.error_code("Map"), add_traceback=True)
@@ -1188,45 +1177,45 @@ class Result:
 
     def map(self, ok_func):
         if self._success:
-            return Result(ok_func(self._Ok), error_code_group=self._g)
-        res = Result(self._Err)
+            return Result(ok_func(self._val), error_code_group=self._g)
+        res = Result(self._val)
         res.add_Err_msg("Result.map on Err.", self.error_code("Map"))
         return res
 
     def map_or(self, default, ok_func):
         if not self._success:
             return Result(default, error_code_group=self._g)
-        return Result(ok_func(self._Ok), error_code_group=self._g)
+        return Result(ok_func(self._val), error_code_group=self._g)
 
     def map_or_else(self, err_func, ok_func):
         if self._success:
-            return Result(ok_func(self._Ok), error_code_group=self._g)
-        return Result(err_func(self._Err), error_code_group=self._g)
+            return Result(ok_func(self._val), error_code_group=self._g)
+        return Result(err_func(self._val), error_code_group=self._g)
 
     def map_Err(self, err_func):
         if self._success:
             return self.copy()
-        return Result(err_func(self._Err), error_code_group=self._g)
+        return Result(err_func(self._val), error_code_group=self._g)
 
     def iter(self):
         if self._success:
-            if isinstance(self._Ok, Iterable):
-                return iter(self._Ok)
-            return iter([self._Ok])
+            if isinstance(self._val, Iterable):
+                return iter(self._val)
+            return iter([self._val])
         return iter([])
 
     def add_Err_msg(self, error_msg, error_code=1, add_traceback=True):
         """Convert to error status and append error message and code."""
         if self._success:
-            if error_msg == "" and self._Ok == "":
+            if error_msg == "" and self._val == "":
                 error_msg = EMPTY_ERROR_MSG
             elif error_msg == "":
-                error_msg = str(self._Ok)
+                error_msg = str(self._val)
             self._success = False
-            self._Ok = ""
-            self._Err = ResultErr("", 1, self._g)
+            self._val = ""
+            self._val = ResultErr("", 1, self._g)
         if error_msg != "":
-            self._Err.append(error_msg, error_code, add_traceback, _levels=-4)
+            self._val.append(error_msg, error_code, add_traceback, _levels=-4)
 
     def update_result(self, value, create_new=False, deepcopy=False):
         if create_new:
@@ -1235,19 +1224,19 @@ class Result:
             return Result(value, error_code_group=self._g)
         elif isinstance(value, ResultErr):
             self._success = False
-            self._Ok = ""
-            self._Err = value
+            self._val = ""
+            self._val = value
         else:
             self._success = True
-            self._Ok = value
-            self._Err = ResultErr()
+            self._val = value
+            self._val = ResultErr()
         return self
 
     def copy(self, deepcopy=False):
         if self._success is None:
             return Result.empty_init()
         if self._success and deepcopy:
-            return Result(_deepcopy(self._Ok), error_code_group=self._g)
+            return Result(_deepcopy(self._val), error_code_group=self._g)
         return Result(self)
 
     def register_code(self, code, description, error_code_group=None):
@@ -1283,11 +1272,11 @@ class Result:
         if self._success is None:
             return "Result(Empty)"
         elif self._success:
-            if isinstance(self._Ok, str):
-                return f'Ok("{self._Ok}")'
-            return f"Ok({self._Ok})"
+            if isinstance(self._val, str):
+                return f'Ok("{self._val}")'
+            return f"Ok({self._val})"
         else:
-            return f'Err("{" | ".join(f"{m}" for m in self._Err.msg)}")'
+            return f'Err("{" | ".join(f"{m}" for m in self._val.msg)}")'
 
     # def _empty_error(self):
     #     if self._success is None:
@@ -1316,10 +1305,10 @@ class Result:
                 err.add_Err_msg(f"{operation} with b as Err.", self.error_code("Op_On_Error"), add_traceback=True)
                 return True, err
             if self._success:
-                return False, b._Ok  # no error
+                return False, b._val  # no error
 
         if not self._success:
-            err = Result(self._Err, add_traceback=True)
+            err = Result(self._val, add_traceback=True)
             err.add_Err_msg(f"{operation} with a as Err.", self.error_code("Op_On_Error"), add_traceback=False)
             return True, err
         return False, b  # no error
@@ -1336,7 +1325,7 @@ class Result:
         return err
 
     def __str__(self):
-        # return f"Err(\"{' | '.join(f"[{c}] {m}" for c, m in zip(self._Err.code, self._Err.msg))}\")"
+        # return f"Err(\"{' | '.join(f"[{c}] {m}" for c, m in zip(self._val.code, self._val.msg))}\")"
         return self.str()
 
     def __repr__(self):
@@ -1344,12 +1333,12 @@ class Result:
 
     def __bool__(self):
         if self._success:
-            return bool(self._Ok)
+            return bool(self._val)
         return False
 
     def __hash__(self) -> int:
         if self._success:
-            return hash(self._Ok)  # Hash the value stored in ok
+            return hash(self._val)  # Hash the value stored in ok
         return hash(self.str())
 
     def __contains__(self, value):
@@ -1358,18 +1347,18 @@ class Result:
 
         if not self._success:
             if isinstance(value, ResultErr):
-                return self._Err == value
+                return self._val == value
             return False
 
         if isinstance(value, ResultErr):
             return False
 
         value_seq = isinstance(value, (Sequence, Iterable))
-        ok_seq = isinstance(self._Ok, (Sequence, Iterable))
+        ok_seq = isinstance(self._val, (Sequence, Iterable))
 
         if not ok_seq or (ok_seq and value_seq):
-            return value == self._Ok
-        return value in self._Ok  # value is a scalar and Ok is a sequence
+            return value == self._val
+        return value in self._val  # value is a scalar and Ok is a sequence
 
     def __getattr__(self, name):
         """
@@ -1401,7 +1390,7 @@ class Result:
             return self
         try:
             # Forward any unknown attribute to value in Ok(value) component
-            attr = getattr(self._Ok, name)
+            attr = getattr(self._val, name)
             if attr is None:
                 return
             if callable(attr):
@@ -1431,7 +1420,7 @@ class Result:
             self.add_Err_msg(other)
             return self
         try:
-            self._Ok += other
+            self._val += other
             return self
         except Exception as e:
             return self._operator_overload_error(e, op, True)
@@ -1442,7 +1431,7 @@ class Result:
         if errored:
             return other
         try:
-            return Result(self._Ok + other, error_code_group=self._g)
+            return Result(self._val + other, error_code_group=self._g)
         except Exception as e:
             return self._operator_overload_error(e, op, False)
 
@@ -1452,7 +1441,7 @@ class Result:
         if errored:
             return other
         try:
-            return Result(other + self._Ok, error_code_group=self._g)
+            return Result(other + self._val, error_code_group=self._g)
         except Exception as e:
             return self._operator_overload_error(e, op, False)
 
@@ -1463,7 +1452,7 @@ class Result:
             self.add_Err_msg(other)
             return self
         try:
-            self._Ok -= other
+            self._val -= other
             return self
         except Exception as e:
             return self._operator_overload_error(e, op, True)
@@ -1474,7 +1463,7 @@ class Result:
         if errored:
             return other
         try:
-            return Result(self._Ok - other, error_code_group=self._g)
+            return Result(self._val - other, error_code_group=self._g)
         except Exception as e:
             return self._operator_overload_error(e, op, False)
 
@@ -1484,7 +1473,7 @@ class Result:
         if errored:
             return other
         try:
-            return Result(other - self._Ok, error_code_group=self._g)
+            return Result(other - self._val, error_code_group=self._g)
         except Exception as e:
             return self._operator_overload_error(e, op, False)
 
@@ -1495,7 +1484,7 @@ class Result:
             self.add_Err_msg(other)
             return self
         try:
-            self._Ok *= other
+            self._val *= other
             return self
         except Exception as e:
             return self._operator_overload_error(e, op, True)
@@ -1506,7 +1495,7 @@ class Result:
         if errored:
             return other
         try:
-            return Result(self._Ok * other, error_code_group=self._g)
+            return Result(self._val * other, error_code_group=self._g)
         except Exception as e:
             return self._operator_overload_error(e, op, False)
 
@@ -1516,7 +1505,7 @@ class Result:
         if errored:
             return other
         try:
-            return Result(other * self._Ok, error_code_group=self._g)
+            return Result(other * self._val, error_code_group=self._g)
         except Exception as e:
             return self._operator_overload_error(e, op, False)
 
@@ -1527,7 +1516,7 @@ class Result:
             self.add_Err_msg(other)
             return self
         try:
-            self._Ok /= other
+            self._val /= other
             return self
         except Exception as e:
             return self._operator_overload_error(e, op, True)
@@ -1538,7 +1527,7 @@ class Result:
         if errored:
             return other
         try:
-            return Result(self._Ok / other, error_code_group=self._g)
+            return Result(self._val / other, error_code_group=self._g)
         except Exception as e:
             return self._operator_overload_error(e, op, False)
 
@@ -1548,7 +1537,7 @@ class Result:
         if errored:
             return other
         try:
-            return Result(other / self._Ok, error_code_group=self._g)
+            return Result(other / self._val, error_code_group=self._g)
         except Exception as e:
             return self._operator_overload_error(e, op, False)
 
@@ -1559,7 +1548,7 @@ class Result:
             self.add_Err_msg(other)
             return self
         try:
-            self._Ok //= other
+            self._val //= other
             return self
         except Exception as e:
             return self._operator_overload_error(e, op, True)
@@ -1570,7 +1559,7 @@ class Result:
         if errored:
             return other
         try:
-            return Result(self._Ok // other, error_code_group=self._g)
+            return Result(self._val // other, error_code_group=self._g)
         except Exception as e:
             return self._operator_overload_error(e, op, False)
 
@@ -1580,7 +1569,7 @@ class Result:
         if errored:
             return other
         try:
-            return Result(other // self._Ok, error_code_group=self._g)
+            return Result(other // self._val, error_code_group=self._g)
         except Exception as e:
             return self._operator_overload_error(e, op, False)
 
@@ -1591,7 +1580,7 @@ class Result:
             self.add_Err_msg(other)
             return self
         try:
-            self._Ok %= other
+            self._val %= other
             return self
         except Exception as e:
             return self._operator_overload_error(e, op, True)
@@ -1602,7 +1591,7 @@ class Result:
         if errored:
             return other
         try:
-            return Result(self._Ok % other, error_code_group=self._g)
+            return Result(self._val % other, error_code_group=self._g)
         except Exception as e:
             return self._operator_overload_error(e, op, False)
 
@@ -1612,7 +1601,7 @@ class Result:
         if errored:
             return other
         try:
-            return Result(other % self._Ok, error_code_group=self._g)
+            return Result(other % self._val, error_code_group=self._g)
         except Exception as e:
             return self._operator_overload_error(e, op, False)
 
@@ -1623,7 +1612,7 @@ class Result:
             self.add_Err_msg(other)
             return self
         try:
-            self._Ok **= other
+            self._val **= other
             return self
         except Exception as e:
             return self._operator_overload_error(e, op, True)
@@ -1634,7 +1623,7 @@ class Result:
         if errored:
             return other
         try:
-            return Result(self._Ok**other, error_code_group=self._g)
+            return Result(self._val**other, error_code_group=self._g)
         except Exception as e:
             return self._operator_overload_error(e, op, False)
 
@@ -1644,14 +1633,14 @@ class Result:
         if errored:
             return other
         try:
-            return Result(other**self._Ok, error_code_group=self._g)
+            return Result(other**self._val, error_code_group=self._g)
         except Exception as e:
             return self._operator_overload_error(e, op, False)
 
     def __int__(self):  # To get called by built-in int() method to convert a type to an int.
         if self._success:
             try:
-                return Result(int(self._Ok), error_code_group=self._g)
+                return Result(int(self._val), error_code_group=self._g)
             except Exception as e:
                 self.add_Err_msg("Result(int(a)) resulted in an Exception.")
                 self.add_Err_msg(f"{type(e).__name__}: {e}", self.error_code("Int_Op"), add_traceback=False)
@@ -1662,7 +1651,7 @@ class Result:
     def __float__(self):  # To get called by built-in float() method to convert a type to float.
         if self._success:
             try:
-                return Result(float(self._Ok), error_code_group=self._g)
+                return Result(float(self._val), error_code_group=self._g)
             except Exception as e:
                 self.add_Err_msg("Result(float(a)) resulted in an Exception.")
                 self.add_Err_msg(f"{type(e).__name__}: {e}", self.error_code("Float_Op"), add_traceback=False)
@@ -1676,7 +1665,7 @@ class Result:
             other = Result(other)
 
         if self.is_Ok and other.is_Ok:
-            return self._Ok < other._Ok
+            return self._val < other._val
         return other.is_Ok
 
     def __le__(self, other):  # compare self <= other.
@@ -1685,7 +1674,7 @@ class Result:
             other = Result(other)
 
         if self.is_Ok and other.is_Ok:
-            return self._Ok <= other._Ok
+            return self._val <= other._val
         return other.is_Ok or (self.is_Err and other.is_Err)
 
     def __gt__(self, other):  # compare self > other.
@@ -1694,7 +1683,7 @@ class Result:
             other = Result(other)
 
         if self.is_Ok and other.is_Ok:
-            return self._Ok > other._Ok
+            return self._val > other._val
         return self.is_Ok
 
     def __ge__(self, other):  # compare self >= other.
@@ -1703,7 +1692,7 @@ class Result:
             other = Result(other)
 
         if self.is_Ok and other.is_Ok:
-            return self._Ok >= other._Ok
+            return self._val >= other._val
         return self.is_Ok or (self.is_Err and other.is_Err)
 
     def __eq__(self, other):  # compare self == other.
@@ -1712,7 +1701,7 @@ class Result:
             other = Result(other)
 
         if self.is_Ok and other.is_Ok:
-            return self._Ok == other._Ok
+            return self._val == other._val
         return self.is_Err and other.is_Err
 
     def __ne__(self, other):  # compare self != other.
@@ -1721,7 +1710,7 @@ class Result:
             other = Result(other)
 
         if self.is_Ok and other.is_Ok:
-            return self._Ok != other._Ok
+            return self._val != other._val
         return self.is_Ok or other.is_Ok
 
 
