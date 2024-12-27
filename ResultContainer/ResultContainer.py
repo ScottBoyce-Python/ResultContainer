@@ -649,9 +649,9 @@ class ResultErr(Exception):
 
     def expect(self, error_msg=""):
         self.raises(error_msg)
-        return ResultErr()
+        return self
 
-    def unwrap(self, *args, **kwargs):
+    def unwrap(self):
         """Returns the list of error messages stored."""
         return self.msg.copy()
 
@@ -1254,13 +1254,11 @@ class Result:
                                                If group does not exist, then raises an error.
         """
         group = self._g if error_code_group is None else error_code_group
-        ResErr = ResultErr("", 1, group)
-        return ResErr.error_code(code)
+        return ResultErr(error_code_group=group).error_code(code)
 
     def error_code_description(self, description=None, error_code_group=None):
         group = self._g if error_code_group is None else error_code_group
-        ResErr = ResultErr("", 1, group)
-        return ResErr.error_code(description)
+        return ResultErr(error_code_group=group).error_code(description)
 
     def str(self):
         if self._success is None:
@@ -1272,12 +1270,12 @@ class Result:
         else:
             return f'Err("{" | ".join(f"{m}" for m in self._Err.msg)}")'
 
-    def _empty_error(self):
-        if self._success is None:
-            raise ResultErr(
-                "Result object is empty!\nIt must be associated with an Ok(value) or Err(e) to use any methods.",
-                add_traceback=False,
-            )
+    # def _empty_error(self):
+    #     if self._success is None:
+    #         raise ResultErr(
+    #             "Result object is empty!\nIt must be associated with an Ok(value) or Err(e) to use any methods.",
+    #             add_traceback=False,
+    #         )
 
     def _operator_overload_prep(self, b, operation: str):
 
