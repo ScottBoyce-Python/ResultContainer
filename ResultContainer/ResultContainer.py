@@ -1038,33 +1038,37 @@ class Result:
         _empty_init=False,
         _levels=-3,
     ):
-        if isinstance(value, ResultErr):
-            success = False
+        if isinstance(value, Result):
             self._g = value._g
+            success = value._success
+            value = value._val
         else:
             self._g = error_code_group
 
-        if _empty_init:
-            self._success = None
+        if isinstance(value, ResultErr):
+            self._success = False
+            self._g = value._g
+            self._val = value.copy()
+            return
+
+        if success not in [True, False, None]:
+            raise TypeError(
+                f"Result must have success as bool, but received success={success}, which is type {type(success)}"
+            )
+
+        self._success = success
+
+        if _empty_init or success is None:
             self._val = None
-        elif isinstance(value, Result):
-            self._g = value._g;
-            self._success = value._success
-            if self._success:
-                self._val = _deepcopy(value) if deepcopy else value
-        	else:
-        	    self._val = value._val.copy()
         elif success:
-            self._success = True
             self._val = _deepcopy(value) if deepcopy else value
         else:
-            self._success = False
             if error_msg == "" and value == "":
                 error_msg = EMPTY_ERROR_MSG
             self._val = (
                 ResultErr(error_msg, error_code, self._g, add_traceback, _levels=_levels)
                 if error_msg != ""
-                else ResultErr(value, error_code, self._g, add_traceback, _levels=_levels)
+                else ResultErr(str(value), error_code, self._g, add_traceback, _levels=_levels)
             )
 
     @classmethod
