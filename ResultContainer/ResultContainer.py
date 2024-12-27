@@ -1411,8 +1411,10 @@ class Result:
 
     def __getattr__(self, name):
         """
-        Handles unknown attributes by forwarding them to the value in Ok(value).
-        If Err(error) variant, then appends AttributeError error message.
+        Handles unknown attributes and methods by forwarding them to the value in Ok(value).
+        For the Ok(value) variant, returns Ok(value.attrib) or Ok(value.method()).
+            -If attribute is bad, or error results from method then returns Err(error).
+        For the Err(error) variant or attribute name is invalid, raises ResultErr.
 
         Parameters:
             name (str): The name of the missing attribute.
@@ -1425,18 +1427,16 @@ class Result:
                 f"Result.{name} is a possible case mistake. Did you mean Result.{ATTRIBUTES_MISTAKES[name]} instead? Or did you forget () on a method or put () on an attrib. If Ok(x.{name}) is what you want, then do Ok(x).expect().{name}",
                 self.error_code("Attribute"),
             )
-            return self
-
-        if name in EXCLUDE_ATTRIBUTES:
+        elif name in EXCLUDE_ATTRIBUTES:
             self.add_Err_msg(
                 f"{name} is an excluded attribute/method. Did you forget () on a method or put () on an attrib. If Ok(x.{name}) is what you want, then do Ok(x).expect().{name}",
                 self.error_code("Attribute"),
             )
-            return self
-
-        if self.is_Err:
+        elif self.is_Err:
             self.add_Err_msg(f"VAR.{name} with VAR as Err variant", self.error_code("Attribute_While_Error_State"))
-            return self
+
+        self.raises()
+
         try:
             # Forward any unknown attribute to value in Ok(value) component
             attr = getattr(self._val, name)
@@ -1446,10 +1446,10 @@ class Result:
 
                 def method(*args, **kwargs):
                     try:
-                        res = attr(*args, **kwargs)
-                        return Result(res, error_code_group=self._g)  # if res is not None else None
+                        return Result(attr(*args, **kwargs), error_code_group=self._g)
                     except Exception as e:
-                        return Result.as_Err(f"VAR.{name}() raises {e}", self.error_code("Method"), self._g)
+                        self.add_Err_msg(f"VAR.{name}() raises {e}", self.error_code("Method"))
+                        return self
 
                 return method
             if isinstance(attr, Result):
