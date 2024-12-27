@@ -835,7 +835,7 @@ class Result:
     The Err(error) variant only allows for attributes and methods that are part of the Result object.
     Otherwise, `Err(error).attrib` and `Err(error).method()` raises a ResultErr exception.
 
-    res = Result(value, success, error_msg, error_code, error_code_group)
+    res = Result(value, success, error_msg, error_code, error_code_group, add_traceback, deepcopy)
 
     Args:
         value                (Any):       The value to wrap in the Ok(value).
@@ -852,9 +852,11 @@ class Result:
         error_code_group (int, optional): Specify the error_codes group to use for code and message flags.
                                           Default is 1. Error codes are stored as a class variable,
                                           so this is useful if you need different sets of error codes within a program.
+        add_traceback (bool, optional):   If True and success is False, adds traceback information to Err.
+        deepcopy (bool, optional):        If True, then deepcopy value before wrapping in Ok.
 
     Constructors:
-        res = Result.as_Ok(value)    # Initialize as Ok variant.
+        res = Result.as_Ok(value, deepcopy=False)    # Initialize as Ok variant.
         res = Result.as_Err(error_msg, error_code=1) # Initialize as Err variant.
 
     Attributes:
@@ -1018,6 +1020,7 @@ class Result:
         error_code=1,
         error_code_group=1,
         add_traceback=True,
+        deepcopy=False,
         *,
         _empty_init=False,
         _levels=-3,
@@ -1034,10 +1037,13 @@ class Result:
         elif isinstance(value, Result):
             self._g = value._g;
             self._success = value._success
-            self._val = value if self._success else value._val.copy()
+            if self._success:
+                self._val = _deepcopy(value) if deepcopy else value
+        	else:
+        	    self._val = value._val.copy()
         elif success:
             self._success = True
-            self._val = value
+            self._val = _deepcopy(value) if deepcopy else value
         else:
             self._success = False
             if error_msg == "" and value == "":
@@ -1219,25 +1225,13 @@ class Result:
 
     def update_result(self, value, create_new=False, deepcopy=False):
         if create_new:
-            if deepcopy:
-                return Result(deepcopy(value), error_code_group=self._g)
-            return Result(value, error_code_group=self._g)
-        elif isinstance(value, ResultErr):
-            self._success = False
-            self._val = ""
-            self._val = value
-        else:
-            self._success = True
-            self._val = value
-            self._val = ResultErr()
+            return Result(value, error_code_group=self._g, deepcopy=deepcopy)
+        self._val = value
+        self._success = not isinstance(value, ResultErr)
         return self
 
-    def copy(self, deepcopy=False):
-        if self._success is None:
-            return Result.empty_init()
-        if self._success and deepcopy:
-            return Result(_deepcopy(self._val), error_code_group=self._g)
-        return Result(self)
+    def copy(self, deepcopy=True):
+        return Result(self, deepcopy=deepcopy)
 
     def register_code(self, code, description, error_code_group=None):
         """
@@ -1723,8 +1717,8 @@ class Ok:
         >>> print(result.unwrap())  # Outputs: 42
     """
 
-    def __new__(self, value):
-        return Result(value)
+    def __new__(self, value, deepcopy=False, error_code_group=1):
+        return Result(value, deepcopy=deepcopy, error_code_group=error_code_group)
 
 
 class Err:
