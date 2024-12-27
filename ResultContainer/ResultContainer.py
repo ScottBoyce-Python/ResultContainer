@@ -798,32 +798,52 @@ class Result:
     A Result class that mimics the behavior of Rust's Result enum.
 
     This class represents either a success case (`Ok`) with a value or an error case (`Err`).
+    The success case is represented as `Ok(value)`,  where `value` is the wrapped object.
+    The error   case is represented as `Err(error)`, where `error` is a `ResultErr` object
+    containing one or more error messages, error codes, and traceback information.
 
-    The Ok(value) variant supports common python math operations
-    as long as both parts do not contain the Err variant and are compatible.
-    For example, Ok(5) + 1 -> Ok(6)
+    The Ok(value) variant can wrap any object, except for a ResultErr type.
+    Mutable objects, such as lists, are wrapped as a shared reference (assignment by reference).
+    For example,
+        lst = [0,1,2]
+        x = Ok(lst)
+        lst[-1] = 99                  # Any modifications to lst is reflected in Ok(lst)
+        print(x) -> "Ok([0, 1, 99])"
+    but you can impose a deepcopy to protect the contents:
+        x = Ok(lst, deepcopy=True)
+
+    The Ok(value) supports common python math operations as long as both operands
+    are not the Err variant and are compatible.
+    For example, Ok(5) + Ok(1) -> Ok(6)
+                 Ok(5) + 1     -> Ok(6)
+                 x = Ok(5)
+                 x += 1        -> x == Ok(6)
 
     However, error states will propagate and add messages, such as
     Err(5)     -> Err("5") and
     Err(5) + 1 -> Err("5 | a += b with a as Err.")
+    x = Err(5)
+    x += 1     -> x == Err("5 | a += b with a as Err.")
 
     The Ok(value) variant supports attributes and methods associated with value.
-    That is, `Ok(value).method()` is equivalent to `Ok(value.method())`
-    and      `Ok(value).attrib`   is equivalent to `Ok(value.attrib)`.
+    That is, `Ok(value).attrib`   is equivalent to `Ok(value.attrib)`
+    and      `Ok(value).method()` is equivalent to `Ok(value.method())`.
 
-    However, `Err(error).method()` and `Err(error).attrib` will return the Err
-    with an appended message of:
-                                f"VAR.{name} with VAR as Err variant"
-    to it. Not `name` is replaced wit the attribute or method used.
+    If `Ok(value).attrib` or `Ok(value).method()` results in an exception,
+    then `Ok(value)` is converted to `Err(error)` and returned.
+
+    The Err(error) variant only allows for attributes and methods that are part of the Result object.
+    Otherwise, `Err(error).attrib` and `Err(error).method()` raises a ResultErr exception.
 
     res = Result(value, success, error_msg, error_code, error_code_group)
 
     Args:
-        value                (Any):       The value to wrap in the Result.as_Ok().
+        value                (Any):       The value to wrap in the Ok(value).
         success   (bool, optional):       True if success, False for error. Default is True.
         error_msg  (Any, optional):       If success is False:
                                              a) and error_msg="", set Err to str(value)
-                                             b) otherwise,        set Err to error_msg.
+                                             b) otherwise,        set Err to error_msg,
+                                                   if listlike, then each item is treated as a separate message.
         error_code (int, optional):       Error code associated with the error.
                                           Default is `1` for `Unspecified`.
                                           A list of common error codes and descriptions
@@ -870,69 +890,70 @@ class Result:
             Return the wrapped value in Ok(value) or return default.
 
         expect(error_msg=""):
-            If  Ok variant, then returns value from value;
+            If  Ok variant, then returns value in Ok(value);
             If Err variant, then raise Err and optionally append error_msg to it.
+            Equivalent to the `Ok` attribute.
 
         expect_Err(ok_msg=""):
             If  Ok variant, then raise ResultErr(ok_msg);
             If Err variant, then returns error in Err(error), which is type ResultErr.
 
-        raises(error_msg="", exception=None):
+        raises(error_msg="", error_code=1):
             If  Ok variant, then returns Ok(value);
             If Err variant, then raise Err and optionally include `from exception`.
             Useful for check during chained operations
 
-        is_Ok_and(ok_func, *args, **kwargs):
+        is_Ok_and(bool_ok_func, *args, **kwargs):
             True if Ok(value) variant and ok_func(value, *args, **kwargs) returns True,
             otherwise False.
               - If function call fails, then raises exception.
 
         apply(ok_func, *args, **kwargs):
             Maps a function to the Result to return a new Result.
-            For the Ok(value)  variant, returns `Result.as_Ok(ok_func(value, *args, **kwargs))`.
-            For the Err(error) variant, returns `Result.as_Err(error)`.
-              - If ok_func fails, returns `Result.as_Err("Result.apply exception.)`.
+            For the Ok(value)  variant, returns `Ok(ok_func(value, *args, **kwargs))`.
+            For the Err(error) variant, returns `Err(error)`.
+              - If ok_func fails, returns `Err("Result.apply exception.)`.
 
         apply_or(default, ok_func, *args, **kwargs):
             Maps a function to the Result to return a new Result.
-            For the Ok(value)  variant, returns `Result.as_Ok(ok_func(value, *args, **kwargs))`.
-            For the Err(error) variant, returns `Result.as_Ok(default)`.
+            For the Ok(value)  variant, returns `Ok(ok_func(value, *args, **kwargs))`.
+            For the Err(error) variant, returns `Ok(default)`.
               - If ok_func fails, returns `Result(default)`.
 
         apply_or_else(err_func, ok_func, *args, **kwargs):
             Maps a function to the Result to return a new Result.
-            For the Ok(value)  variant, returns `Result.as_Ok( ok_func(value, *args, **kwargs))`.
-            For the Err(error) variant, returns `Result.as_Ok(err_func(error, *args, **kwargs))`.
-              - If ok_func fails, returns `Result.as_Ok(err_func(value, *args, **kwargs))`
-              - If ok_func and err_func fail, returns `Result.as_Err("Result.apply_or_else exception.)`.
+            For the Ok(value)  variant, returns `Ok( ok_func(value, *args, **kwargs))`.
+            For the Err(error) variant, returns `Ok(err_func(error, *args, **kwargs))`.
+              - If ok_func fails, returns `Ok(err_func(value, *args, **kwargs))`
+              - If ok_func and err_func fail, returns `Err("Result.apply_or_else exception.)`.
 
         apply_Err(err_func, *args, **kwargs):
             Maps a function to the Result to return a new Result.
-            For the Ok(value)  variant, returns `Result.as_Ok(ok_func(value, *args, **kwargs))`.
-            For the Err(error) variant, returns `Result.as_Err(error)`.
-              - If err_func fails, returns `Result.as_Err("Result.apply exception.)`.
+            For the Ok(value)  variant, returns `Ok(ok_func(value, *args, **kwargs))`.
+            For the Err(error) variant, returns `Err(error)`.
+              - If err_func fails, returns `Err("Result.apply exception.)`.
 
         map(ok_func):
             Maps a function to the Result to return a new Result.
-            For the Ok(value)  variant, returns `Result.as_Ok(ok_func(value))`.
-            For the Err(error) variant, returns `Result.as_Err(error)`.
+            For the Ok(value)  variant, returns `Ok(ok_func(value))`.
+            For the Err(error) variant, returns `Err(error)`.
               - If function call fails, then raises exception.
 
         map_or(default, ok_func):
             Maps a function to the Result to return a new Result.
-            For the Ok(value)  variant, returns `Result.as_Ok(ok_func(value))`.
-            Otherwise                   returns `Result.as_Ok(Default)`.
+            For the Ok(value)  variant, returns `Ok(ok_func(value))`.
+            Otherwise                   returns `Ok(Default)`.
 
         map_or_else(err_func, ok_func):
-            Maps a function to the Result.as_Err, otherwise return Result.
-            For the Ok(value)  variant, returns `Result.as_Ok(ok_func(value))`.
-            For the Err(error) variant, returns `Result.as_Ok(err_func(error))`.
+            Maps a function to the Err, otherwise return Result.
+            For the Ok(value)  variant, returns `Ok(ok_func(value))`.
+            For the Err(error) variant, returns `Ok(err_func(error))`.
 
         map_Err(err_func):
-            Maps a function to the Result.as_Err and another function to Result.as_Ok.
+            Maps a function to the Err and another function to Ok.
             For the Ok(value)  variant, returns `Ok(value).copy()`.
-            For the Err(error) variant, returns `Result.as_Ok(err_func(error))`.
-              - If function call fails, raises `Result.as_Err("Result.map_err exception.)`.
+            For the Err(error) variant, returns `Ok(err_func(error))`.
+              - If function call fails, raises `Err("Result.map_err exception.)`.
 
         iter():
             Returns an iterator of the value in Ok(value).
@@ -940,8 +961,8 @@ class Result:
                 if value is iterable: returns `iter(value)`
                 else:                 returns `iter([value])`  -> Only one iteration
             For the Err(error) variant, returns `iter([])`.
-            This setup always iterates at least once for Ok()
-            and does not iterate for Err().
+            This setup always iterates at least once for Ok() and does not iterate for Err().
+            If expand is True, then returns `list(iter_unwrap())`.
             Note, this process will consume an iterable if it does not store values.
 
         add_Err_msg(error_msg, error_code=1, add_traceback=True)):
