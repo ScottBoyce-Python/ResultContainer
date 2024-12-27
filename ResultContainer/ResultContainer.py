@@ -1060,9 +1060,9 @@ class Result:
             value stored in Ok(value) or raise ResultErr
         """
         if self._success:
-            return self._val
+            return self._Ok
         self.add_Err_msg("Result.Ok attribute for Err variant", 15, add_traceback=True)  # 15: "not_Ok",
-        raise self._val
+        raise self._Err
 
     @property
     def Err_msg(self):
@@ -1278,20 +1278,23 @@ class Result:
     #         )
 
     def _operator_overload_prep(self, b, operation: str):
-
+        # Checks and returns:
+        #  a.err and b.err -> True  and a&b error
+        #  b.err           -> True  and   b error
+        #  a.ok            -> False and b
+        #  a.err           -> True  and   a error
+        #  -> False and b
         if isinstance(b, ResultErr):
-            b = Result(b, False)  # b is error so return error
+            b = Result(b)  # ResultErr type automatically makes Err()
 
         if isinstance(b, Result):
             if not self._success and not b._success:
-                err = Result(self._Err, add_traceback=True)
-                err.add_Err_msg(
-                    f"{operation} with a and b as Err.", self.error_code("Op_On_Error"), add_traceback=False
-                )
+                err = Result(self)
+                err.add_Err_msg(f"{operation} with a and b as Err.", self.error_code("Op_On_Error"), add_traceback=True)
                 return True, err
             if not b._success:
-                err = Result(b._Err, add_traceback=True)
-                err.add_Err_msg(f"{operation} with b as Err.", self.error_code("Op_On_Error"), add_traceback=False)
+                err = Result(b)
+                err.add_Err_msg(f"{operation} with b as Err.", self.error_code("Op_On_Error"), add_traceback=True)
                 return True, err
             if self._success:
                 return False, b._Ok  # no error
