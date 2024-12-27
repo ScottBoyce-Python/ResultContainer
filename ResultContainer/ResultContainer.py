@@ -207,7 +207,7 @@ EXCLUDE_ATTRIBUTES = {
     "error_code",
     "error_code_description",
     "str",
-    "_empty_error",
+    # "_empty_error",
     "_operator_overload_prep",
     "_success",
     "_Ok",
@@ -1024,17 +1024,15 @@ class Result:
         return cls(EMPTY_ERROR_MSG, False, error_msg, error_code, error_code_group, _levels=-4)
 
     @classmethod
-    def empty_init(cls):
+    def _empty_init(cls):
         return cls("", _empty_init=True)
 
     @property
     def is_Ok(self):
-        self._empty_error()
         return self._success
 
     @property
     def is_Err(self):
-        self._empty_error()
         return not self._success
 
     @property
@@ -1068,15 +1066,12 @@ class Result:
         return self._Err.traceback_info
 
     def unwrap(self):
-        self._empty_error()
         return self._Ok if self._success else self._Err
 
     def unwrap_or(self, default):
-        self._empty_error()
         return self._Ok if self._success else default
 
     def expect(self, error_msg="", error_code=5):  # 5 -> ResultErr.error_code("Expect")
-        self._empty_error()
         if self._success:
             return self._Ok
         if error_msg != "":
@@ -1084,7 +1079,6 @@ class Result:
         raise self._Err
 
     def expect_Err(self, ok_msg="", error_code=5):  # 5 -> ResultErr.error_code("Expect")
-        self._empty_error()
         if not self._success:
             return self._Err
         err = ResultErr("Result.expect_err() is Ok.", error_code, self._g, add_traceback=False)
@@ -1092,7 +1086,6 @@ class Result:
         raise ResultErr(err)
 
     def raises(self, error_msg="", exception: Exception = None):
-        self._empty_error()
         if not self._success:
             if error_msg != "":
                 self.add_Err_msg(error_msg, 1, add_traceback=False)
@@ -1102,11 +1095,9 @@ class Result:
         return self
 
     def is_Ok_and(self, bool_ok_func, *args, **kwargs):
-        self._empty_error()
         return self._success and bool_ok_func(self._Ok, *args, **kwargs)
 
     def apply(self, ok_func, *args, **kwargs):
-        self._empty_error()
         if self._success:
             try:
                 return Result(ok_func(self._Ok, *args, **kwargs), error_code_group=self._g)
@@ -1119,7 +1110,6 @@ class Result:
         return res
 
     def apply_or(self, default, ok_func, *args, **kwargs):
-        self._empty_error()
         if self._success:
             try:
                 return Result(ok_func(self._Ok, *args, **kwargs), error_code_group=self._g)
@@ -1128,7 +1118,6 @@ class Result:
         return Result(default, error_code_group=self._g)
 
     def apply_or_else(self, err_func, ok_func, *args, **kwargs):
-        self._empty_error()
         if self._success:
             try:
                 return Result(ok_func(self._Ok, *args, **kwargs), error_code_group=self._g)
@@ -1151,7 +1140,6 @@ class Result:
             return err
 
     def apply_Err(self, err_func, *args, **kwargs):
-        self._empty_error()
         if self._success:
             return self.copy()
         try:
@@ -1163,7 +1151,6 @@ class Result:
             return err
 
     def map(self, ok_func):
-        self._empty_error()
         if self._success:
             return Result(ok_func(self._Ok), error_code_group=self._g)
         res = Result(self._Err)
@@ -1171,25 +1158,21 @@ class Result:
         return res
 
     def map_or(self, default, ok_func):
-        self._empty_error()
         if not self._success:
             return Result(default, error_code_group=self._g)
         return Result(ok_func(self._Ok), error_code_group=self._g)
 
     def map_or_else(self, err_func, ok_func):
-        self._empty_error()
         if self._success:
             return Result(ok_func(self._Ok), error_code_group=self._g)
         return Result(err_func(self._Err), error_code_group=self._g)
 
     def map_Err(self, err_func):
-        self._empty_error()
         if self._success:
             return self.copy()
         return Result(err_func(self._Err), error_code_group=self._g)
 
     def iter(self):
-        self._empty_error()
         if self._success:
             if isinstance(self._Ok, Iterable):
                 return iter(self._Ok)
@@ -1280,13 +1263,11 @@ class Result:
             )
 
     def _operator_overload_prep(self, b, operation: str):
-        self._empty_error()
 
         if isinstance(b, ResultErr):
             b = Result(b, False)  # b is error so return error
 
         if isinstance(b, Result):
-            b._empty_error()
             if not self._success and not b._success:
                 err = Result(self._Err, add_traceback=True)
                 err.add_Err_msg(
@@ -1631,7 +1612,6 @@ class Result:
             return self._operator_overload_error(e, op, False)
 
     def __int__(self):  # To get called by built-in int() method to convert a type to an int.
-        self._empty_error()
         if self._success:
             try:
                 return Result(int(self._Ok), error_code_group=self._g)
@@ -1643,7 +1623,6 @@ class Result:
         return self
 
     def __float__(self):  # To get called by built-in float() method to convert a type to float.
-        self._empty_error()
         if self._success:
             try:
                 return Result(float(self._Ok), error_code_group=self._g)
@@ -1656,7 +1635,6 @@ class Result:
 
     def __lt__(self, other):  # compare self < other.
         # Assumes Err() < Ok() and Err(a) == Err(b)
-        self._empty_error()
         if not isinstance(other, Result):
             other = Result(other)
 
@@ -1666,7 +1644,6 @@ class Result:
 
     def __le__(self, other):  # compare self <= other.
         # Assumes Err() < Ok() and Err(a) == Err(b)
-        self._empty_error()
         if not isinstance(other, Result):
             other = Result(other)
 
@@ -1676,7 +1653,6 @@ class Result:
 
     def __gt__(self, other):  # compare self > other.
         # Assumes Err() < Ok() and Err(a) == Err(b)
-        self._empty_error()
         if not isinstance(other, Result):
             other = Result(other)
 
@@ -1686,7 +1662,6 @@ class Result:
 
     def __ge__(self, other):  # compare self >= other.
         # Assumes Err() < Ok() and Err(a) == Err(b)
-        self._empty_error()
         if not isinstance(other, Result):
             other = Result(other)
 
@@ -1696,7 +1671,6 @@ class Result:
 
     def __eq__(self, other):  # compare self == other.
         # Assumes Ok(a) == Ok(b) if a == b, but Err(a) == Err(b) for any a or b.
-        self._empty_error()
         if not isinstance(other, Result):
             other = Result(other)
 
@@ -1706,7 +1680,6 @@ class Result:
 
     def __ne__(self, other):  # compare self != other.
         # Assumes Ok(a) == Ok(b) if a == b, but Err(a) == Err(b) for any a or b.
-        self._empty_error()
         if not isinstance(other, Result):
             other = Result(other)
 
