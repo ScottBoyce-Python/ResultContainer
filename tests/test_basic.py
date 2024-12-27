@@ -56,7 +56,7 @@ def test_err_addition():
 # Test for ResultErr initialization
 def test_resulterr_initialization():
     err = ResultErr("Error occurred", code=404)
-    assert err.error
+    assert err.is_Err
     assert "Error occurred" in err.msg
     assert err.code == [404]
 
@@ -65,7 +65,7 @@ def test_resulterr_initialization():
 def test_resulterr_code_registration():
     ResultErr.register_code(404, "Page_Not_Found")
     err = ResultErr("Error occurred", code=404)
-    assert err.error
+    assert err.is_Err
     assert "Error occurred" in err.msg
     assert err.code == [404]
     assert err.error_code(404) == "Page_Not_Found"

@@ -467,7 +467,7 @@ class ResultErr(Exception):
         >>> from Result import ResultErr
         >>>
         >>> err = ResultErr()              # empty error
-        >>> print(err.error)
+        >>> print(err.is_Err)
         False
         >>> err.raises()                   # Nothing happens
         >>>
@@ -476,14 +476,14 @@ class ResultErr(Exception):
         ResultErr: bad input
 
         >>> err = ResultErr("bad input")   # Initialized with an error
-        >>> print(err.error)
+        >>> print(err.is_Err)
         True
         >>> err.raises()                   # program terminals
         ResultErr: bad input
 
         >>> err = ResultErr("bad input 1") # Initialized with an error
         >>> err.append("bad input 2")      # Second error message
-        >>> print(err.error)
+        >>> print(err.is_Err)
         True
         >>> err.raises()                   # program terminates
         ResultErr:
@@ -570,9 +570,24 @@ class ResultErr(Exception):
         return len(self.msg)
 
     @property
-    def error(self):
-        """Check if the instance contains one or more error messages (if in an `error state`)."""
+    def is_Ok(self):
+        return len(self.msg) == 0
+
+    @property
+    def is_Err(self):
         return len(self.msg) > 0
+
+    @property
+    def Err_msg(self):
+        return [] if self.is_Ok else self.msg
+
+    @property
+    def Err_code(self):
+        return [] if self.is_Ok else self.code
+
+    @property
+    def Err_traceback(self):
+        return [] if self.is_Ok else self.traceback_info
 
     @staticmethod
     def register_code(code, description, error_code_group=None):
