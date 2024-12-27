@@ -2,9 +2,9 @@ import pytest
 from ResultContainer import Result, ResultErr, Ok, Err
 
 
-# Test for Result.Ok and Result.Err initialization
+# Test for Result.as_Ok and Result.as_Err initialization
 def test_ok_initialization():
-    result1 = Result.Ok("Success")
+    result1 = Result.as_Ok("Success")
     assert result1.is_Ok
     assert result1.unwrap() == "Success"
 
@@ -15,7 +15,7 @@ def test_ok_initialization():
 
 
 def test_err_initialization():
-    result1 = Result.Err("Failure")
+    result1 = Result.as_Err("Failure")
     assert result1.is_Err
     assert result1.unwrap().msg == ["Failure"]
 

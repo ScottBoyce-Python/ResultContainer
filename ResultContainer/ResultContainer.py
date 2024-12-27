@@ -12,8 +12,8 @@ Classes:
                 an `Ok(value)` for success or an `Err(error)` for failure.
     - `ResultErr`: A custom exception class for handling multiple
                    error messages,  corresponding error codes, and traceback information.
-    - `Ok`: Syntactic  sugar for Result.Ok
-    - `Err`: Syntactic sugar for Result.Err
+    - `Ok`: Syntactic  sugar for Result.as_Ok
+    - `Err`: Syntactic sugar for Result.as_Err
 
 
 Key Features:
@@ -32,13 +32,13 @@ Constructors:
     ResultErr(msg="", code=1, error_code_group=1, add_traceback=True, max_messages=20):
         Exception class for managing error messages.
     Ok(value):
-        Constructor for a success variant. Syntactic sugar for: `Result.Ok(value)`
+        Constructor for a success variant. Syntactic sugar for: `Result.as_Ok(value)`
     Err(error_msg, error_code=1, error_code_group=1, add_traceback=True):
-        Constructor for an error variant.  Syntactic sugar for: `Result.Err(error)`
+        Constructor for an error variant.  Syntactic sugar for: `Result.as_Err(error)`
 
 Example Usage:
-    >>> success = Result.Ok("Operation succeeded")
-    >>> error = Result.Err("Operation failed")
+    >>> success = Result.as_Ok("Operation succeeded")
+    >>> error = Result.as_Err("Operation failed")
     >>> print(success)
     Ok("Operation succeeded")
     >>> print(error)
@@ -47,7 +47,7 @@ Example Usage:
     Operation succeeded
     >>> print(error.unwrap())
     File "./ResultContainer/ResultContainer.py", line 6, in <module>
-        error = Result.Err("Operation failed")
+        error = Result.as_Err("Operation failed")
     [1] Operation failed
     >>> error().expect()         # raises exception
     Traceback (most recent call last):
@@ -802,7 +802,7 @@ class Result:
     res = Result(value, success, error_msg, error_code, error_code_group)
 
     Args:
-        value                (Any):       The value to wrap in the Result.Ok().
+        value                (Any):       The value to wrap in the Result.as_Ok().
         success   (bool, optional):       True if success, False for error. Default is True.
         error_msg  (Any, optional):       If success is False:
                                              a) and error_msg="", set Err to str(value)
@@ -817,11 +817,8 @@ class Result:
                                           so this is useful if you need different sets of error codes within a program.
 
     Constructors:
-        res = Result.Ok(value)                     # Initialize as Ok variant.
-        res = Result.Err(error_msg, error_code=1)  # Initialize as Err variant.
-        res = Result.empty_init()                  # Initialize as empty object that is set
-                                                   #    later with the Ok or Err attributes.
-                                                   #    Raises an error for all other methods
+        res = Result.as_Ok(value)    # Initialize as Ok variant.
+        res = Result.as_Err(error_msg, error_code=1) # Initialize as Err variant.
 
     Attributes:
         is_Ok    (bool): True if the result is a  success.
@@ -870,50 +867,50 @@ class Result:
 
         apply(ok_func, *args, **kwargs):
             Maps a function to the Result to return a new Result.
-            For the Ok(value)  variant, returns `Result.Ok(ok_func(value, *args, **kwargs))`.
-            For the Err(error) variant, returns `Result.Err(error)`.
-              - If ok_func fails, returns `Result.Err("Result.apply exception.)`.
+            For the Ok(value)  variant, returns `Result.as_Ok(ok_func(value, *args, **kwargs))`.
+            For the Err(error) variant, returns `Result.as_Err(error)`.
+              - If ok_func fails, returns `Result.as_Err("Result.apply exception.)`.
 
         apply_or(default, ok_func, *args, **kwargs):
             Maps a function to the Result to return a new Result.
-            For the Ok(value)  variant, returns `Result.Ok(ok_func(value, *args, **kwargs))`.
-            For the Err(error) variant, returns `Result.Ok(default)`.
+            For the Ok(value)  variant, returns `Result.as_Ok(ok_func(value, *args, **kwargs))`.
+            For the Err(error) variant, returns `Result.as_Ok(default)`.
               - If ok_func fails, returns `Result(default)`.
 
         apply_or_else(err_func, ok_func, *args, **kwargs):
             Maps a function to the Result to return a new Result.
-            For the Ok(value)  variant, returns `Result.Ok( ok_func(value, *args, **kwargs))`.
-            For the Err(error) variant, returns `Result.Ok(err_func(error, *args, **kwargs))`.
-              - If ok_func fails, returns `Result.Ok(err_func(value, *args, **kwargs))`
-              - If ok_func and err_func fail, returns `Result.Err("Result.apply_or_else exception.)`.
+            For the Ok(value)  variant, returns `Result.as_Ok( ok_func(value, *args, **kwargs))`.
+            For the Err(error) variant, returns `Result.as_Ok(err_func(error, *args, **kwargs))`.
+              - If ok_func fails, returns `Result.as_Ok(err_func(value, *args, **kwargs))`
+              - If ok_func and err_func fail, returns `Result.as_Err("Result.apply_or_else exception.)`.
 
         apply_Err(err_func, *args, **kwargs):
             Maps a function to the Result to return a new Result.
-            For the Ok(value)  variant, returns `Result.Ok(ok_func(value, *args, **kwargs))`.
-            For the Err(error) variant, returns `Result.Err(error)`.
-              - If err_func fails, returns `Result.Err("Result.apply exception.)`.
+            For the Ok(value)  variant, returns `Result.as_Ok(ok_func(value, *args, **kwargs))`.
+            For the Err(error) variant, returns `Result.as_Err(error)`.
+              - If err_func fails, returns `Result.as_Err("Result.apply exception.)`.
 
         map(ok_func):
             Maps a function to the Result to return a new Result.
-            For the Ok(value)  variant, returns `Result.Ok(ok_func(value))`.
-            For the Err(error) variant, returns `Result.Err(error)`.
+            For the Ok(value)  variant, returns `Result.as_Ok(ok_func(value))`.
+            For the Err(error) variant, returns `Result.as_Err(error)`.
               - If function call fails, then raises exception.
 
         map_or(default, ok_func):
             Maps a function to the Result to return a new Result.
-            For the Ok(value)  variant, returns `Result.Ok(ok_func(value))`.
-            Otherwise                   returns `Result.Ok(Default)`.
+            For the Ok(value)  variant, returns `Result.as_Ok(ok_func(value))`.
+            Otherwise                   returns `Result.as_Ok(Default)`.
 
         map_or_else(err_func, ok_func):
-            Maps a function to the Result.Err, otherwise return Result.
-            For the Ok(value)  variant, returns `Result.Ok(ok_func(value))`.
-            For the Err(error) variant, returns `Result.Ok(err_func(error))`.
+            Maps a function to the Result.as_Err, otherwise return Result.
+            For the Ok(value)  variant, returns `Result.as_Ok(ok_func(value))`.
+            For the Err(error) variant, returns `Result.as_Ok(err_func(error))`.
 
         map_Err(err_func):
-            Maps a function to the Result.Err and another function to Result.Ok.
+            Maps a function to the Result.as_Err and another function to Result.as_Ok.
             For the Ok(value)  variant, returns `Ok(value).copy()`.
-            For the Err(error) variant, returns `Result.Ok(err_func(error))`.
-              - If function call fails, raises `Result.Err("Result.map_err exception.)`.
+            For the Err(error) variant, returns `Result.as_Ok(err_func(error))`.
+              - If function call fails, raises `Result.as_Err("Result.map_err exception.)`.
 
         iter():
             Returns an iterator of the value in Ok(value).
@@ -945,12 +942,12 @@ class Result:
             Get an error code and description for a specific code group.
 
     Example Usage:
-        >>> result = Result.Ok("Success")
+        >>> result = Result.as_Ok("Success")
         >>> print(result)                  # Outputs: Ok("Success")
         >>> x = result.unwrap()            # x = "Success"
         >>> print(result.expect())         # Outputs: Success  -> same output with unwrap()
 
-        >>> error = Result.Err("Failure")
+        >>> error = Result.as_Err("Failure")
         >>> print(error)                   # Outputs: Err("Failure")
         >>> x = error.unwrap()             # x = ResultErr("Failure")
         >>> error.expect()                 # Raises ResultErr("Failure")
@@ -1014,11 +1011,11 @@ class Result:
             )
 
     @classmethod
-    def Ok(cls, value, error_code_group=1):
-        return cls(value, error_code_group=error_code_group)
+    def as_Ok(cls, value, deepcopy=False, error_code_group=1):
+        return cls(value, error_code_group=error_code_group, deepcopy=deepcopy)
 
     @classmethod
-    def Err(cls, error_msg, error_code=1, error_code_group=1):
+    def as_Err(cls, error_msg, error_code=1, error_code_group=1, add_traceback=True):
         return cls(EMPTY_ERROR_MSG, False, error_msg, error_code, error_code_group, _levels=-4)
 
     @classmethod
@@ -1097,7 +1094,7 @@ class Result:
             try:
                 return Result(ok_func(self._Ok, *args, **kwargs), error_code_group=self._g)
             except Exception as e:
-                err = Result.Err("Result.apply exception.", self.error_code("Apply"), self._g)
+                err = Result.as_Err("Result.apply exception.", self.error_code("Apply"), self._g)
                 err.add_Err_msg(f"{type(e).__name__}: {e}", self.error_code("Apply"), add_traceback=False)
                 return err
         res = Result(self._Err)
@@ -1128,7 +1125,11 @@ class Result:
         try:
             return Result(err_func(err, *args, **kwargs), error_code_group=self._g)
         except Exception as e:
-            err = Result.Err("Result.apply_or_else exception.", self.error_code("Apply"), self._g)
+            err = Result.as_Err(
+                "Result.apply_or_else ok_func(value), err_func(value), and err_func(error) raised exceptions.",
+                self.error_code("Apply"),
+                self._g,
+            )
             err.add_Err_msg(f"{type(e).__name__}: {e}", self.error_code("Apply"), add_traceback=False)
             return err
 
@@ -1375,7 +1376,7 @@ class Result:
                         res = attr(*args, **kwargs)
                         return Result(res, error_code_group=self._g)  # if res is not None else None
                     except Exception as e:
-                        return Result.Err(f"VAR.{name}() raises {e}", self.error_code("Method"), self._g)
+                        return Result.as_Err(f"VAR.{name}() raises {e}", self.error_code("Method"), self._g)
 
                 return method
             if isinstance(attr, Result):
@@ -1699,7 +1700,7 @@ class Result:
 
 class Ok:
     """
-    Constructor class that returns a Result.Ok(value).
+    Constructor class that returns a Result.as_Ok(value).
 
     Example:
         >>> result = Ok(42)
@@ -1712,7 +1713,7 @@ class Ok:
 
 class Err:
     """
-    Constructor class that returns a Result.Err(error).
+    Constructor class that returns a Result.as_Err(error).
 
     Example:
         >>> error = Err("Error message")
@@ -1730,12 +1731,12 @@ if __name__ == "__main__":
     # Demonstration of basic functionality
     # Methods for creating an Ok variant (all three produce the same result):
     success_result = Result("Operation was successful")
-    success_result = Result.Ok("Operation was successful")
+    success_result = Result.as_Ok("Operation was successful")
     success_result = Ok("Operation was successful")
 
     # Methods for creating an Err variant (all three produce the same result):
     error_result = Result(None, False, "Something went wrong")  # long method of init
-    error_result = Result.Err("Something went wrong")
+    error_result = Result.as_Err("Something went wrong")
     error_result = Err("Operation failed")
 
     print("Success Result:", success_result)

@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 def test_wrap_datetime():
     dt0 = datetime(2024, 12, 19, 12, 0, 0)
     dt1 = Result(dt0)
-    dt2 = Result.Ok(dt0)
+    dt2 = Result.as_Ok(dt0)
     dt3 = Ok(dt0)
     assert dt0 == dt1.unwrap()
     assert dt0 == dt1
