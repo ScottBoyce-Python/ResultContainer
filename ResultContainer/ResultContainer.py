@@ -134,6 +134,7 @@ _BASE_ERROR_CODES = {
     12: "Math_Op",
     13: "Float_Op",
     14: "Int_Op",
+    15: "not_Ok",
 }
 
 TRACEBACK_EXCLUDE_FILES = {
