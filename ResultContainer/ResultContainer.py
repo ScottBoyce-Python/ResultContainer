@@ -1328,7 +1328,9 @@ class Result:
                 return f'Ok("{self._val}")'
             return f"Ok({self._val})"
         else:
-            return f'Err("{" | ".join(f"{m}" for m in self._val.msg)}")'
+            # msg = " | ".join(f"{m}" if m != "" else "???" for m in self._val.msg)
+            # return f'Err("{" | ".join(f"{m}" for m in self._val.msg)}")'
+            return f'Err("{" | ".join(f"{m}" for m in self._val.msg if m != "")}")'
 
     # def _empty_error(self):
     #     if self._success is None:
