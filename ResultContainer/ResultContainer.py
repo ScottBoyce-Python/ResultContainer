@@ -1102,14 +1102,12 @@ class Result:
         err.append(ok_msg, add_traceback=False)
         raise ResultErr(err)
 
-    def raises(self, error_msg="", exception: Exception = None):
-        if not self._success:
-            if error_msg != "":
-                self.add_Err_msg(error_msg, 1, add_traceback=False)
-            if exception is None:
-                raise self._Err
-            raise self._Err from exception
-        return self
+    def raises(self, error_msg="", error_code=1):
+        if self._success:
+            return self
+        if error_msg != "":
+            self.add_Err_msg(error_msg, error_code, add_traceback=False)
+        raise self._Err  # raisde exception do to error
 
     def is_Ok_and(self, bool_ok_func, *args, **kwargs):
         return self._success and bool_ok_func(self._Ok, *args, **kwargs)
