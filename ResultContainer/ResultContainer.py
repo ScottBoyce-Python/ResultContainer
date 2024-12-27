@@ -1397,22 +1397,17 @@ class Result:
 
     def __contains__(self, value):
         if isinstance(value, Result):
-            value = value.unpack()
-
-        if not self._success:
-            if isinstance(value, ResultErr):
-                return self._val == value
-            return False
+            value = value.unwrap()
 
         if isinstance(value, ResultErr):
+            return False if self._success else self._val == value
+
+        if not self._success:
             return False
 
-        value_seq = isinstance(value, (Sequence, Iterable))
-        ok_seq = isinstance(self._val, (Sequence, Iterable))
-
-        if not ok_seq or (ok_seq and value_seq):
-            return value == self._val
-        return value in self._val  # value is a scalar and Ok is a sequence
+        if isinstance(self._val, (Sequence, Iterable)):
+            return value == self._val or value in self._val
+        return value == self._val
 
     def __getattr__(self, name):
         """
