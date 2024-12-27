@@ -1362,8 +1362,8 @@ class Result:
                 return False, b._val  # no error
 
         if not self._success:
-            err = Result(self._val, add_traceback=True)
-            err.add_Err_msg(f"{operation} with a as Err.", self.error_code("Op_On_Error"), add_traceback=False)
+            err = Result(self)
+            err.add_Err_msg(f"{operation} with a as Err.", self.error_code("Op_On_Error"), add_traceback=True)
             return True, err
         return False, b  # no error
 
