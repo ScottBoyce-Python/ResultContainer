@@ -1458,7 +1458,7 @@ class Result:
             return self
 
     def __iter__(self):
-        return self.iter()
+        return self.iter_wrap()
 
     def __iadd__(self, other):  # addition with assignment, a += b
         op = "a += b"
