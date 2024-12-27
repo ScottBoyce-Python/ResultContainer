@@ -524,6 +524,9 @@ class ResultErr(Exception):
 
     def _process_message_and_code(self, msg, code, add_traceback=True, _levels=-2):
         """Helper to process messages and codes."""
+        if msg == "":
+            return
+
         if isinstance(msg, ResultErr):
             self.msg += msg.msg
             self.code += msg.code
@@ -531,7 +534,7 @@ class ResultErr(Exception):
             self._check_max_messages()
             return
 
-        if add_traceback and msg != "":
+        if add_traceback:
             if _levels > -2:
                 if _levels > -1:
                     raise RuntimeError("ResultErr._process_message_and_code has positive _levels")
@@ -551,10 +554,9 @@ class ResultErr(Exception):
             # self.traceback_info.extend([tb] * dim
         else:
             msg = str(msg).strip()
-            if msg:
-                self.msg.append(msg)
-                self.code.append(code)
-                self.traceback_info.append(tb)
+            self.msg.append(msg)
+            self.code.append(code)
+            self.traceback_info.append(tb)
 
         self._check_max_messages()
 
