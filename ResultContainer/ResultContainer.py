@@ -1131,23 +1131,21 @@ class Result:
     def expect(self, error_msg="", error_code=5):  # 5 -> ResultErr.error_code("Expect")
         if self._success:
             return self._val
-        if error_msg != "":
-            self.add_Err_msg(error_msg, error_code, add_traceback=False)
-        raise self._val
+        self.raises(error_msg, error_code)
 
     def expect_Err(self, ok_msg="", error_code=5):  # 5 -> ResultErr.error_code("Expect")
         if not self._success:
             return self._val
-        err = ResultErr("Result.expect_err() is Ok.", error_code, self._g, add_traceback=False)
-        err.append(ok_msg, add_traceback=False)
-        raise ResultErr(err)
+        err = ResultErr(f"Result.expect_err contains {self}.", self.error_code("Expect"), self._g, add_traceback=True)
+        err.append(ok_msg, error_code, add_traceback=False)
+        raise err
 
     def raises(self, error_msg="", error_code=1):
         if self._success:
             return self
         if error_msg != "":
             self.add_Err_msg(error_msg, error_code, add_traceback=False)
-        raise self._val  # raisde exception do to error
+        raise self._val  # raised exception do to error
 
     def is_Ok_and(self, bool_ok_func, *args, **kwargs):
         return self._success and bool_ok_func(self._val, *args, **kwargs)
