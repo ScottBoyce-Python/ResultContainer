@@ -1157,10 +1157,10 @@ class Result:
             except Exception as e:
                 err = Result.as_Err("Result.apply exception.", self.error_code("Apply"), self._g)
                 err.add_Err_msg(f"{type(e).__name__}: {e}", self.error_code("Apply"), add_traceback=False)
-                return err
-        res = Result(self._val)
-        res.add_Err_msg("Result.apply on Err.", self.error_code("Apply"))
-        return res
+        else:
+            err = Result(self._val)
+            err.add_Err_msg("Result.apply on Err.", self.error_code("Apply"))
+        return err
 
     def apply_or(self, default, ok_func, *args, **kwargs):
         if self._success:
@@ -1178,7 +1178,12 @@ class Result:
                 try:
                     return Result(err_func(self._val, *args, **kwargs), error_code_group=self._g)
                 except Exception:
-                    err = ResultErr("Result.apply_or_else exception.", self.error_code("Apply"), self._g, False)
+                    err = ResultErr(
+                        "Result.apply_or_else err_func(value) and ok_func(value) raised an exception.",
+                        self.error_code("Apply"),
+                        self._g,
+                        False,
+                    )
         else:
             err = self._val
         try:
