@@ -824,6 +824,11 @@ class Result:
         is_Ok    (bool): True if the result is a  success.
         is_Err   (bool): True if the result is an error.
 
+        Ok (any):
+            If  Ok variant, then returns value in Ok(value);
+            If Err variant, then raise Err and optionally append error_msg to it.
+            Equivalent to the expect() method.
+
         Err_msg (list[str]):
             For the Ok(value)  variant, returns `[]`.
             For the Err(error) variant, returns list of error messages.
@@ -1031,6 +1036,18 @@ class Result:
     def is_Err(self):
         self._empty_error()
         return not self._success
+
+    @property
+    def Ok(self):
+        """Attribute that is equivalent to Result.expect()
+
+        Returns:
+            value stored in Ok(value) or raise ResultErr
+        """
+        if self._success:
+            return self._val
+        self.add_Err_msg("Result.Ok attribute for Err variant", 15, add_traceback=True)  # 15: "not_Ok",
+        raise self._val
 
     @property
     def Err_msg(self):
