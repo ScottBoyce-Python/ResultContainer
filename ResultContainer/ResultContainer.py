@@ -936,6 +936,13 @@ class Result:
             For the Err(error) variant, returns `Err(error)`.
               - If err_func fails, returns `Err("Result.apply exception.)`.
 
+        apply_map(ok_func, unwrap=False):
+            Maps a function to the Result to return a new Result.
+            For the Ok(value)  variant, returns `Ok(list(map(ok_func, value)))`.
+            For the Err(error) variant, returns `Err(error)`.
+              - If ok_func fails, returns `Err("Result.apply_map exception.)`.
+            If unwrap is True, then returns a list or ResultErr.
+
         map(ok_func):
             Maps a function to the Result to return a new Result.
             For the Ok(value)  variant, returns `Ok(ok_func(value))`.
@@ -1197,6 +1204,22 @@ class Result:
             err.add_Err_msg("Result.apply_err exception.", self.error_code("Map"), add_traceback=True)
             err.add_Err_msg(f"{type(e).__name__}: {e}", self.error_code("Map"), add_traceback=False)
             return err
+
+    def apply_map(self, ok_func, unwrap=False):
+        if unwrap:
+            return self.apply_map(ok_func).unwrap()
+        if self._success:
+            try:
+                if isinstance(self._val, Iterable):
+                    return Result(list(map(ok_func, self._val)))
+                return Result([ok_func(self._val)])
+            except Exception as e:
+                err = Result.as_Err("Result.apply_map exception.", self.error_code("Apply"), self._g)
+                err.add_Err_msg(f"{type(e).__name__}: {e}", self.error_code("Apply"), add_traceback=False)
+        else:
+            err = Result(self._val)
+            err.add_Err_msg("Result.apply_map on Err.", self.error_code("Apply"))
+        return err
 
     def map(self, ok_func):
         if self._success:
