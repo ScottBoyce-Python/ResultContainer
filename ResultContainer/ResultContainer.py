@@ -1385,6 +1385,12 @@ class Result:
     def __repr__(self):
         return self.str()
 
+    def __len__(self):
+        if self._success:
+            return len(self._val)
+        self.add_Err_msg("len(Err) not allowed")
+        return 0
+
     def __bool__(self):
         if self._success:
             return bool(self._val)
