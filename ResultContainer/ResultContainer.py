@@ -1726,7 +1726,7 @@ class Err:
     """
 
     def __new__(self, error_msg, error_code=1, error_code_group=1, add_traceback=True):
-        return Result("UnknownError", False, error_msg, error_code, error_code_group, add_traceback, _levels=-4)
+        return Result(EMPTY_ERROR_MSG, False, error_msg, error_code, error_code_group, add_traceback, _levels=-4)
 
 
 # %% --------------------------------------------------------------------------
