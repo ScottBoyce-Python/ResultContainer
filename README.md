@@ -5,21 +5,51 @@
 </p>
 
 
-ResultContainer is a python module with a `Result` class that mimics the [Result Result Enum](https://doc.rust-lang.org/std/result/enum.Result.html). The Result Enum is used for situations when errors are expected and are easily handled, or you do not want to have lots of try/except clauses. The Result enum wraps a value in an `Ok` variant, until there is an exception or error raised, and then it is converted to the `Err` variant. The `Err` variant is a `ResultErr` object stored in the `Result` that contains the error messages and traceback information. The `Result` object includes similar methods to the Result Result Enum for inquiry about the state, mapping functions, and passing attributes/methods to the containing `value`.
+The `ResultContainer` module simplifies complex error handling into clean, readable, and maintainable code structures. Error handling in Python can often become unwieldy, with deeply nested `try/except` blocks and scattered error management. The `ResultContainer` is used for situations when errors are expected and are easily handled. Inspired by [Rust’s Result<Ok, Err>](https://doc.rust-lang.org/std/result/enum.Result.html) enum, `ResultContainer` introduces a clean and Pythonic way to encapsulate success (`Ok`) and failure (`Err`) outcomes.
 
-#### `Result` Variants
+The `ResultContainer.Result` enum wraps a value in an `Ok` variant, until there is an exception or error raised, and then it is converted to the `Err` variant. The `Err` variant wraps a `ResultContainer.ResultErr` object that contains the error messages and traceback information. The `Result` object includes similar methods to the Rust Result Enum for inquiry about the state, mapping functions, and passing attributes/methods to the containing `value`. 
+
+The `ResultContainer` is designed to streamline error propagation and improve code readability, `ResultContainer` is ideal for developers seeking a robust, maintainable approach to handling errors in data pipelines, API integrations, or asynchronous operations.
+
+## Features
+
+- **Variants for Success and Failure**: Two variants represented in a Result instance, `Ok(value)` for successful outcomes, and `Err(e)` for errors that have resulted. Provides a flexible mechanism for chaining operations on the `Ok` value while propagating errors through `Err`.
+- **Attribute and Method Transparency**: Automatically passes attributes, methods, indices, and math operations to the value contained within an `Ok`, otherwise propagates the `Err(e)`.
+- **Utility Methods**: Implements helper methods for error propagation, transformation, and querying (e.g., `.map()`, `.apply()`, `.unwrap_or()`, `.expect()`, `.raises()`) for concise and readable handling of success and error cases. 
+
+## Installation
+To install the module
+
+```bash
+pip install --upgrade git+https://github.com/ScottBoyce-Python/ResultContainer.git
+```
+
+or you can clone the respository with
+```bash
+git clone https://github.com/ScottBoyce-Python/ResultContainer.git
+```
+then rename the file `ResultContainer/__init__.py` to  `ResultContainer/ResultContainer.py` and move `ResultContainer.py` to wherever you want to use it.
+
+## `Result` Variants
+
+```python
+# Result is the main class and Ok and Err are constructors.
+from ResultContainer import Result, Ok, Err
+```
 
 - `Ok(value)`
   - `value` is wrapped within an `Ok`.
   - Constructor: `Result.as_Ok(value)`
+  - `Result.Ok` attribute returns the wrapped `value`
 - `Err(e)`
   - `e` is a `ResultErr` object wrapped within an `Err`. 
   - Constructor: `Result.as_Err(error_msg)`
+  - `Result.Err` attribute returns the wrapped `e`.
 
 
-#### Properties of the `Result` Variants
+### Properties of the `Result` Variants
 
-##### `Ok(value)`
+#### `Ok(value)`
 
 - Represents success (non-error state).  
   The `value` is wrapped within the `Ok()`.
@@ -42,7 +72,7 @@ ResultContainer is a python module with a `Result` class that mimics the [Result
   - `Err(e1) < Err(e2) ` &nbsp; ➣ &nbsp; `False`
   - `Err(e1) <= Err(e2) ` &nbsp; ➣ &nbsp; `True`
 
-##### `Err(e)`:
+#### `Err(e)`:
 
 - Represents a failure (error-state) and contains `e` as a `ResultErr` object  
   that stores error messages and traceback information.
@@ -53,25 +83,6 @@ ResultContainer is a python module with a `Result` class that mimics the [Result
 - Any operation on `Err(e)` results in another error message being appended to `e`.
 
 There are methods built into `Result` to check if an error has been raised, or the unwrap the value/error to get its contents. 
-
-## Features
-
-- **Variants for Success and Failure**: Two variants, `Ok(value)` for successful outcomes, and `Err(e)` for errors that have resulted. Provides a flexible mechanism for chaining operations on the `Ok` value while propagating errors through `Err`.
-- **Attribute and Method Transparency**: Automatically passes attributes, methods, and math operations to the value contained within an `Ok`, otherwise propagates the `Err(e)`.
-- **Utility Methods**: Implements helper methods for error propagation, transformation, and querying (e.g., `.map()`, `.apply()`, `.unwrap_or()`, `.expect()`, `.raises()`) for concise and readable handling of success and error cases. 
-
-## Installation
-To install the module
-
-```bash
-pip install --upgrade git+https://github.com/ScottBoyce-Python/ResultContainer.git
-```
-
-or you can clone the respository with
-```bash
-git clone https://github.com/ScottBoyce-Python/ResultContainer.git
-```
-then rename the file `ResultContainer/__init__.py` to  `ResultContainer/ResultContainer.py` and move `ResultContainer.py` to wherever you want to use it.
 
 ## Result Initialization
 
