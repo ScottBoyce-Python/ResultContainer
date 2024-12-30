@@ -1,8 +1,9 @@
 # ResultContainer: Rust Result Enums in Python
 
 <p align="left">
-  <img src="https://github.com/ScottBoyce-Python/ResultContainer/actions/workflows/python-pytest.yml/badge.svg" alt="Build Status" height="20">
+  <img src="https://github.com/ScottBoyce-Python/ResultContainer/actions/workflows/ResultContainer-pytest.yml/badge.svg" alt="Build Status" height="20">
 </p>
+
 
 
 The `ResultContainer` module simplifies complex error handling into clean, readable, and maintainable code structures. Error handling in Python can often become unwieldy, with deeply nested `try/except` blocks and scattered error management. The `ResultContainer` is used for situations when errors are expected and are easily handled. Inspired by [Rust’s Result<Ok, Err>](https://doc.rust-lang.org/std/result/enum.Result.html) enum, `ResultContainer` introduces a clean and Pythonic way to encapsulate success (`Ok`) and failure (`Err`) outcomes.
@@ -88,6 +89,7 @@ There are methods built into `Result` to check if an error has been raised, or t
 
 ```python
 # Only the first argument is required for all constructors
+from ResultContainer import Result, Ok, Err
 
 # Main object signature:
 res = Result(value, success, error_msg, error_code, error_code_group, add_traceback, deepcopy) # Construct either Ok or Er
@@ -184,6 +186,7 @@ z = x + y         # z = Ok([1, 2, 3, 4, 5, 6, 7])
 ### Wrapping Objects
 
 ```python
+from ResultContainer import Result, Ok, Err
 from datetime import datetime, timedelta
 
 # Wrap a datetime.datetime object
@@ -259,6 +262,7 @@ y = x.raises()  # Raises the following exception:
 ### Passing Functions and Chaining Operations
 
 ```python
+from ResultContainer import Result, Ok, Err
 from math import sqrt
 # to use an external function, like sqrt
 # It must be passed to either apply or map or extracted with expect.
