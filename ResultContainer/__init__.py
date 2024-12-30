@@ -614,16 +614,16 @@ class ResultErr(Exception):
             return self.__class__._error_codes[g]
         return self.__class__._error_codes[g][description]
 
-    def raises(self, note=""):
+    def raises(self, error_msg=""):
         """
         Raise a ResultErr exception if there are error messages.
 
         Args:
-            note (str): Optional note to append to the error.
+            error_msg (str): Optional note to append to the error.
         """
         if len(self.msg) > 0:
-            if note != "":
-                self.append(str(note), add_traceback=False)
+            if error_msg != "":
+                self.append(str(error_msg), add_traceback=False)
             raise self
 
     def expect(self, error_msg=""):
