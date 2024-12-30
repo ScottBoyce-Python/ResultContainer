@@ -64,7 +64,7 @@ packages = ["ResultContainer"]
 include-package-data = true
 
 [tool.setuptools.dynamic]
-version = { attr = "ResultContainer._init.__version__" }
+version = { attr = "ResultContainer.__version__" }
 
 [tool.black]
 target-version = ['py39']
