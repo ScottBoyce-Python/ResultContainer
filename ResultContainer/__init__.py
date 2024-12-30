@@ -1093,6 +1093,19 @@ class Result:
         raise self._val
 
     @property
+    def Err(self):
+        """Attribute that is equivalent to Result.expect_Err()
+
+        Returns:
+            value stored in Err(error) or raise ResultErr
+        """
+        if self._success:
+            # Result.Err raises error for Ok variant
+            # Have to operate on new instance for debugpy, otherwise the Locals inspection will convert self to Err.
+            raise ResultErr("Result.Err attribute for Ok variant", 16, self._g)
+        return self._val
+
+    @property
     def Err_msg(self):
         return [] if self._success else self._val.msg
 
