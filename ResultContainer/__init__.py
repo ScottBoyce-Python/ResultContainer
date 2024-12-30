@@ -1671,6 +1671,177 @@ class Result:
         except Exception as e:
             return self._operator_overload_error(e, op, False)
 
+    def __imatmul__(self, other):  # matrix multiplication with assignment, a @= b
+        op = "a @= b"
+        errored, other = self._operator_overload_prep(other, op)
+        if errored:
+            self.add_Err_msg(other)
+            return self
+        try:
+            self._val @= other
+            return self
+        except Exception as e:
+            return self._operator_overload_error(e, op, False)
+
+    def __matmul__(self, other):  # matrix multiplication, a @ b
+        op = "a @ b"
+        errored, other = self._operator_overload_prep(other, op)
+        if errored:
+            return other
+        try:
+            return Result(self._val @ other, error_code_group=self._g)
+        except Exception as e:
+            return self._operator_overload_error(e, op, False)
+
+    def __rmatmul__(self, other):  # reverse matrix multiplication, b @ a
+        op = "b @ a"
+        errored, other = self._operator_overload_prep(other, op)
+        if errored:
+            return other
+        try:
+            return Result(other @ self._val, error_code_group=self._g)
+        except Exception as e:
+            return self._operator_overload_error(e, op, False)
+
+    def __and__(self, other):  # bitwise AND, a & b
+        op = "a & b"
+        errored, other = self._operator_overload_prep(other, op)
+        if errored:
+            return other
+        try:
+            return Result(self._val & other, error_code_group=self._g)
+        except Exception as e:
+            return self._operator_overload_error(e, op, False, self.error_code("Bitwise_Op"))
+
+    def __or__(self, other):  # bitwise OR, a | b
+        op = "a | b"
+        errored, other = self._operator_overload_prep(other, op)
+        if errored:
+            return other
+        try:
+            return Result(self._val | other, error_code_group=self._g)
+        except Exception as e:
+            return self._operator_overload_error(e, op, False, self.error_code("Bitwise_Op"))
+
+    def __xor__(self, other):  # bitwise XOR (exclusive OR), a ^ b
+        op = "a ^ b"
+        errored, other = self._operator_overload_prep(other, op)
+        if errored:
+            return other
+        try:
+            return Result(self._val ^ other, error_code_group=self._g)
+        except Exception as e:
+            return self._operator_overload_error(e, op, False, self.error_code("Bitwise_Op"))
+
+    def __invert__(self):  # bitwise NOT, ~a
+        try:
+            return Result(~self._val, error_code_group=self._g)
+        except Exception as e:
+            return self._operator_overload_error(e, "~a", False, self.error_code("Bitwise_Op"))
+
+    def __lshift__(self, other):  # left bit shift, a << b
+        op = "a << b"
+        errored, other = self._operator_overload_prep(other, op)
+        if errored:
+            return other
+        try:
+            return Result(self._val << other, error_code_group=self._g)
+        except Exception as e:
+            return self._operator_overload_error(e, op, False, self.error_code("Bitwise_Op"))
+
+    def __rshift__(self, other):  # right bit shift, a >> b
+        op = "a >> b"
+        errored, other = self._operator_overload_prep(other, op)
+        if errored:
+            return other
+        try:
+            return Result(self._val >> other, error_code_group=self._g)
+        except Exception as e:
+            return self._operator_overload_error(e, op, False, self.error_code("Bitwise_Op"))
+
+    def __rand__(self, other):  # reverse bitwise AND, b & a
+        op = "b & a"
+        errored, other = self._operator_overload_prep(other, op)
+        if errored:
+            return other
+        try:
+            return Result(other & self._val, error_code_group=self._g)
+        except Exception as e:
+            return self._operator_overload_error(e, op, False, self.error_code("Bitwise_Op"))
+
+    def __ror__(self, other):  # reverse bitwise OR, b | a
+        op = "b | a"
+        errored, other = self._operator_overload_prep(other, op)
+        if errored:
+            return other
+        try:
+            return Result(other | self._val, error_code_group=self._g)
+        except Exception as e:
+            return self._operator_overload_error(e, op, False, self.error_code("Bitwise_Op"))
+
+    def __rxor__(self, other):  # reverse bitwise XOR (exclusive OR), b ^ a
+        op = "b ^ a"
+        errored, other = self._operator_overload_prep(other, op)
+        if errored:
+            return other
+        try:
+            return Result(other ^ self._val, error_code_group=self._g)
+        except Exception as e:
+            return self._operator_overload_error(e, op, False, self.error_code("Bitwise_Op"))
+
+    def __rlshift__(self, other):  # reverse left bit shift, b << a
+        op = "b << a"
+        errored, other = self._operator_overload_prep(other, op)
+        if errored:
+            return other
+        try:
+            return Result(other << self._val, error_code_group=self._g)
+        except Exception as e:
+            return self._operator_overload_error(e, op, False, self.error_code("Bitwise_Op"))
+
+    def __rrshift__(self, other):  # reverse right bit shift, b >> a
+        op = "b >> a"
+        errored, other = self._operator_overload_prep(other, op)
+        if errored:
+            return other
+        try:
+            return Result(other >> self._val, error_code_group=self._g)
+        except Exception as e:
+            return self._operator_overload_error(e, op, False, self.error_code("Bitwise_Op"))
+
+    def __abs__(self):  # To get called by built-in abs() method to for absolute value, abs(a)
+        if self._success:
+            try:
+                return Result(abs(self._val), error_code_group=self._g)
+            except Exception as e:
+                self.add_Err_msg("Result(abs(a)) resulted in an Exception.")
+                self.add_Err_msg(f"{type(e).__name__}: {e}", 1, add_traceback=False)
+        else:
+            self.add_Err_msg("int(Result(a)) with a as Err.", self.error_code("Op_On_Error"))
+        return self
+
+    def __neg__(self):  # negation, -a
+        if self._success:
+            try:
+                return Result(-self._val, error_code_group=self._g)
+            except Exception as e:
+                self.add_Err_msg("Result(-a) resulted in an Exception.")
+                self.add_Err_msg(f"{type(e).__name__}: {e}", 1, add_traceback=False)
+        else:
+            self.add_Err_msg("int(Result(a)) with a as Err.", self.error_code("Op_On_Error"))
+        return self
+
+    def __pos__(self):  # unary positive, +a
+        if self._success:
+            try:
+                return Result(+self._val, error_code_group=self._g)
+            except Exception as e:
+                self.add_Err_msg("Result(+a) resulted in an Exception.")
+                self.add_Err_msg(f"{type(e).__name__}: {e}", 1, add_traceback=False)
+        else:
+            self.add_Err_msg("int(Result(a)) with a as Err.", self.error_code("Op_On_Error"))
+        return self
+
     def __int__(self):  # To get called by built-in int() method to convert a type to an int.
         if self._success:
             try:
