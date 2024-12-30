@@ -1396,6 +1396,25 @@ class Result:
             return hash(self._val)  # Hash the value stored in ok
         return hash(self.str())
 
+    def __enter__(self):  # Called when entering a with block.
+        if not self._success:
+            return self
+        self._val = self._val.__enter__()
+        return self
+
+    def __exit__(self, exc_type, exc_value, tb):  # Called when exiting a with block.
+        if self._val.__exit__(exc_type, exc_value, traceback):
+            # tb = traceback.format_tb(tb)
+            # tb = [line for line in tb if not any(exclude in line for exclude in TRACEBACK_EXCLUDE_FILES)]
+            # tb.pop()
+            self.add_Err_msg(f"with block {exc_type} Exception.", add_traceback=False)
+            # self._val.traceback_info.pop()
+            # self._val.traceback_info.append(tb)
+            raise self._val from exc_value
+        return False
+
+        self._val.__exit__(exc_type, exc_value, traceback)
+
     def __contains__(self, value):
         if isinstance(value, Result):
             value = value.unwrap()
