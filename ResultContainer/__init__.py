@@ -112,6 +112,9 @@ _BASE_ERROR_CODES = {
     13: "Float_Op",
     14: "Int_Op",
     15: "not_Ok",
+    16: "not_Err",
+    17: "Bitwise_Op",
+    18: "Subscript_Error",
 }
 
 TRACEBACK_EXCLUDE_FILES = {
