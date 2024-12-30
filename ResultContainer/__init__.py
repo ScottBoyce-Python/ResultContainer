@@ -818,6 +818,7 @@ class Result:
 
     Args:
         value                (Any):       The value to wrap in the Ok(value).
+                                          If value is ResultErr object, then wrap in Err(value).
         success   (bool, optional):       True if success, False for error. Default is True.
         error_msg  (Any, optional):       If success is False:
                                              a) and error_msg="", set Err to str(value)
@@ -825,9 +826,9 @@ class Result:
                                                    if listlike, then each item is treated as a separate message.
         error_code (int, optional):       Error code associated with the error.
                                           Default is `1` for `Unspecified`.
-                                          A list of common error codes and descriptions
-                                          are in `ResultErr.error_codes`.
-                                          The code description does not have to match the error_msg.
+                                          A dict of the currently assigned error codes are returned
+                                          with `Result.error_code()`
+                                          Note, the code description does not have to match the error_msg.
         error_code_group (int, optional): Specify the error_codes group to use for code and message flags.
                                           Default is 1. Error codes are stored as a class variable,
                                           so this is useful if you need different sets of error codes within a program.
@@ -879,7 +880,7 @@ class Result:
             If  Ok variant, then raise ResultErr(ok_msg);
             If Err variant, then returns error in Err(error), which is type ResultErr.
 
-        raises(error_msg="", error_code=1):
+        raises(add_traceback=False, error_msg="", error_code=1):
             If  Ok variant, then returns Ok(value);
             If Err variant, then raise Err and optionally include `from exception`.
             Useful for check during chained operations
