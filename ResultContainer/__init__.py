@@ -1330,16 +1330,7 @@ class Result:
                 return f'Ok("{self._val}")'
             return f"Ok({self._val})"
         else:
-            # msg = " | ".join(f"{m}" if m != "" else "???" for m in self._val.msg)
-            # return f'Err("{" | ".join(f"{m}" for m in self._val.msg)}")'
             return f'Err("{" | ".join(f"{m}" for m in self._val.msg if m != "")}")'
-
-    # def _empty_error(self):
-    #     if self._success is None:
-    #         raise ResultErr(
-    #             "Result object is empty!\nIt must be associated with an Ok(value) or Err(e) to use any methods.",
-    #             add_traceback=False,
-    #         )
 
     def _operator_overload_prep(self, b, operation: str):
         # Checks and returns:
