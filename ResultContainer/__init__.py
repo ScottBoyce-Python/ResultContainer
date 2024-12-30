@@ -402,11 +402,12 @@ class ResultErr(Exception):
 
 
     Attributes:
-        msg                  (list[str]): List of the error messages that have been added (does not have to match error_codes[code]).
-        code                 (list[int]): List of the error codes    that have been added (does not have to match error_codes[msg]).
-        traceback_info (list[list[str]]): List of lists that contains the traceback information for each error message
-        size                       (int): Returns the number of error messages.
-        error                     (bool): Returns true if in error status (ie, size > 0).
+        size                      (int): Returns the number of error messages.
+        is_Ok                    (bool): Returns False if in error status (ie, size == 0).
+        is_Err                   (bool): Returns True  if in error status (ie, size >  0).
+        Err_msg             (list[str]): List of the error messages that have been added (does not have to match error_codes[code]).
+        Err_traceback (list[list[str]]): List of lists that contains the traceback information for each error message
+
 
     Methods:
         raises(note=""):
@@ -495,6 +496,10 @@ class ResultErr(Exception):
             error_code_group (int, optional):         Identify the error_codes group to use for code and message flags.
                                                       Default is 1. Error codes are stored as a class variable,
                                                       so this is useful if you need different sets of error codes within a program.
+            add_traceback (bool, optional):   If True, then code traceback information is added to the message.
+            max_messages (int, optional):     The maximum number of error messages to store.
+                                              After this, all additional messages are ignored.
+                                              Default is 20.
         """
         super().__init__()
         self.max_messages = max_messages if max_messages > 1 else 1
@@ -617,20 +622,23 @@ class ResultErr(Exception):
             return self.__class__._error_codes[g]
         return self.__class__._error_codes[g][description]
 
-    def raises(self, error_msg=""):
+    def raises(self, add_traceback=False, error_msg=""):
         """
         Raise a ResultErr exception if there are error messages.
 
         Args:
-            error_msg (str): Optional note to append to the error.
+            add_traceback (bool): Optional, add traceback info at raises call.
+            error_msg      (str): Optional note to append to the error.
         """
         if len(self.msg) > 0:
             if error_msg != "":
-                self.append(str(error_msg), add_traceback=False)
+                self.append(str(error_msg), add_traceback=add_traceback)
+            elif add_traceback:
+                self.append("ResultErr.raises Exception")
             raise self
 
     def expect(self, error_msg=""):
-        self.raises(error_msg)
+        self.raises(True, error_msg)
         return self
 
     def unwrap(self):
@@ -667,10 +675,11 @@ class ResultErr(Exception):
         """Clear all stored error messages and reset the instance to non-error status."""
         self.msg.clear()
         self.code.clear()
+        self.traceback_info.clear()
 
     def pop(self):
         """Remove and return the last stored error message and its code."""
-        return self.code.pop(), self.msg.pop()
+        return self.code.pop(), self.msg.pop(), self.traceback_info.pop()
 
     def has_msg(self, msg):
         """Check if a specific message exists in the error messages."""
@@ -848,8 +857,13 @@ class Result:
 
         Ok (any):
             If  Ok variant, then returns value in Ok(value);
-            If Err variant, then raise Err and optionally append error_msg to it.
+            If Err variant, then raises a ResultErr exception.
             Equivalent to the expect() method.
+
+        Err (any):
+            If  Ok variant, then raises a ResultErr exception;
+            If Err variant, then returns the wrapped ResultErr.
+            Equivalent to the expect_Err() method.
 
         Err_msg (list[str]):
             For the Ok(value)  variant, returns `[]`.
@@ -868,25 +882,25 @@ class Result:
 
     Methods:
 
+        raises(add_traceback=False, error_msg="", error_code=1):
+            If  Ok variant, then returns Ok(value);
+            If Err variant, then raises a ResultErr exception`.
+            Useful for check during chained operations
+
         unwrap():
-            Return the wrapped value in Ok(value) or error in Err(error).
+            Return the wrapped value in Ok(value) or e in Err(e).
 
         unwrap_or(default):
             Return the wrapped value in Ok(value) or return default.
 
         expect(error_msg=""):
-            If  Ok variant, then returns value in Ok(value);
-            If Err variant, then raise Err and optionally append error_msg to it.
+            If  Ok variant, then return the wrapped value in Ok(value);
+            If Err variant, then raises a ResultErr exception and optionally append error_msg to it.
             Equivalent to the `Ok` attribute.
 
         expect_Err(ok_msg=""):
-            If  Ok variant, then raise ResultErr(ok_msg);
-            If Err variant, then returns error in Err(error), which is type ResultErr.
-
-        raises(add_traceback=False, error_msg="", error_code=1):
-            If  Ok variant, then returns Ok(value);
-            If Err variant, then raise Err and optionally include `from exception`.
-            Useful for check during chained operations
+            If  Ok variant, then raises ResultErr(ok_msg);
+            If Err variant, then returns e in Err(e), which is type ResultErr.
 
         is_Ok_and(bool_ok_func, *args, **kwargs):
             True if Ok(value) variant and ok_func(value, *args, **kwargs) returns True,
@@ -903,7 +917,7 @@ class Result:
             Maps a function to the Result to return a new Result.
             For the Ok(value)  variant, returns `Ok(ok_func(value, *args, **kwargs))`.
             For the Err(error) variant, returns `Ok(default)`.
-              - If ok_func fails, returns `Result(default)`.
+              - If ok_func fails, returns `Ok(default)`.
 
         apply_or_else(err_func, ok_func, *args, **kwargs):
             Maps a function to the Result to return a new Result.
