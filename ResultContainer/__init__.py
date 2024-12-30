@@ -1087,10 +1087,14 @@ class Result:
         Returns:
             value stored in Ok(value) or raise ResultErr
         """
-        if self._success:
-            return self._val
-        self.add_Err_msg("Result.Ok attribute for Err variant", 15, add_traceback=True)  # 15: "not_Ok",
-        raise self._val
+        if not self._success:
+            # Result.Ok raises error for Err variant
+            # Have to operate on new instance for debugpy, otherwise the Locals inspection will convert self to Err.
+            # old method: self.add_Err_msg("Result.Ok attribute for Err variant", 15)
+            err = ResultErr(self._val)
+            err.append("Result.Ok attribute for Err variant", 15, add_traceback=True)  # 15: "not_Ok",
+            raise err
+        return self._val
 
     @property
     def Err(self):
