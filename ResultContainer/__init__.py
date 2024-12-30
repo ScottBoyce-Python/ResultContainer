@@ -1482,6 +1482,9 @@ class Result:
     def __iter__(self):
         return self.iter_wrap()
 
+    def __reversed__(self):  # invoked with reversed()
+        return reversed(list(self.iter_wrap()))
+
     def __iadd__(self, other):  # addition with assignment, a += b
         op = "a += b"
         errored, other = self._operator_overload_prep(other, op)
