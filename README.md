@@ -101,17 +101,17 @@ from ResultContainer import Result, Ok, Err
 from ResultContainer import Result, Ok, Err
 
 # Main object signature:
-res = Result(value, success, error_msg, error_code, error_code_group, add_traceback, deepcopy) # Construct either Ok or Er
+res = Result(value, success, error_msg, add_traceback, deepcopy)  # Construct either Ok or Er
 
 # Classmethod signatures:
-res = Result.as_Ok(value, deepcopy, error_code_group)                       # Construct Ok  variant
+res = Result.as_Ok(value, deepcopy)                               # Construct Ok  variant
 
-res = Result.as_Err(error_msg, error_code, error_code_group, add_traceback) # Construct Err variant
+res = Result.as_Err(error_msg, add_traceback)                     # Construct Err variant
     
 # Syntact Sugar Constructors:
-res = Ok(value, deepcopy, error_code_group)                                 # Construct Ok  variant
+res = Ok(value, deepcopy)                                         # Construct Ok  variant
 
-res = Err(error_msg, error_code, error_code_group, add_traceback)           # Construct Err variant
+res = Err(error_msg, add_traceback)                               # Construct Err variant
 
 # Arguments:
 #  value                      (Any): The value to wrap in the Ok(value).
@@ -123,14 +123,6 @@ res = Err(error_msg, error_code, error_code_group, add_traceback)           # Co
 #                                       b) otherwise,        return Err( str(error_msg) ),
 #                                             if error_msg is listlike, then each item is appended as a separate message.
 #                                    Default is "".
-#  error_code       (int, optional): Error code associated with the error.
-#                                    Default is `1` for `Unspecified`.
-#                                    A dict of the currently assigned error codes are returned with Result.error_code()
-#                                    Note, the code description does not have to match the error_msg.
-#  error_code_group (int, optional): Specify the error_codes group to use for code and message flags.
-#                                    Default is 1. Error codes are stored as a class variable,
-#                                    so this is useful if you need different sets of error codes within a program.
-#                                    Most of the time you will never need to use this feature!
 #  add_traceback (bool, optional):   If True and constructing Err variant, adds traceback information to Err.
 #                                    Default is True.
 #  deepcopy (bool, optional):        If True, then deepcopy value before wrapping in Ok. Default is False.
@@ -167,7 +159,7 @@ Err_traceback (list[list[str]]):
 ### Methods
 
 ``` 
-raises(add_traceback=False, error_msg="", error_code=1):
+raises(add_traceback=False, error_msg=""):
     If  Ok variant, then returns Ok(value);
     If Err variant, then raises a ResultErr exception.
     
@@ -233,7 +225,7 @@ iter_wrap(expand=False):
     Always iterates at least once for Ok, and does not iterate for Err.
     If expand is True, then returns list(iter_unwrap()).
                                        
-add_Err_msg(error_msg, error_code=1, add_traceback=True)):
+add_Err_msg(error_msg, add_traceback=True)):
     For the Ok(value) variant, converts to Err(error_msg).
     For the Err(e)    variant, adds an error message.
     

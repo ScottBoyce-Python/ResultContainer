@@ -55,26 +55,15 @@ def test_err_addition():
 
 # Test for ResultErr initialization
 def test_resulterr_initialization():
-    err = ResultErr("Error occurred", code=404)
+    err = ResultErr("Error occurred")
     assert err.is_Err
     assert "Error occurred" in err.msg
-    assert err.code == [404]
-
-
-# Test for ResultErr code registration
-def test_resulterr_code_registration():
-    ResultErr.register_code(404, "Page_Not_Found")
-    err = ResultErr("Error occurred", code=404)
-    assert err.is_Err
-    assert "Error occurred" in err.msg
-    assert err.code == [404]
-    assert err.error_code(404) == "Page_Not_Found"
 
 
 # Test for appending error messages to ResultErr
 def test_resulterr_append():
-    err = ResultErr("Initial error", code=1)
-    err.append("Another error", code=2)
+    err = ResultErr("Initial error")
+    err.append("Another error")
     assert err.size == 2
     assert "Initial error" in err.msg
     assert "Another error" in err.msg
@@ -82,7 +71,7 @@ def test_resulterr_append():
 
 # Test for ResultErr raised
 def test_resulterr_raises():
-    err = ResultErr("This is a raises error", code=500)
+    err = ResultErr("This is a raises error")
     with pytest.raises(ResultErr):
         err.raises()
 
@@ -128,7 +117,6 @@ def test_err_map():
     mapped_result = result.map(lambda x: x * 2)
     assert mapped_result.is_Err
     assert "Failure" in mapped_result.unwrap().msg
-    assert result.error_code("Map") in mapped_result.unwrap().code
 
 
 # Test for `unwrap_or` with Ok result

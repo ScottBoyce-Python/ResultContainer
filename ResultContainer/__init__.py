@@ -4,14 +4,14 @@ ResultContainer Module
 This module defines the `Result` class and supporting `ResultErr` class,
 mimicking the behavior of Rust's `Result` enum. The `Result` class represents the
 result of an operation, either as a success (`Ok`) with a value or as
-an error (`Err`) with associated error messages and codes.
+an error (`Err`) with associated error messages and traceback information.
 
 
 Classes:
     - `Result`: Represents the result of an operation, containing either
                 an `Ok(value)` for success or an `Err(error)` for failure.
     - `ResultErr`: A custom exception class for handling multiple
-                   error messages,  corresponding error codes, and traceback information.
+                   error messages and traceback information.
     - `Ok`: Syntactic  sugar for Result.as_Ok
     - `Err`: Syntactic sugar for Result.as_Err
 
@@ -19,21 +19,21 @@ Classes:
 Key Features:
     - Supports arithmetic and comparison operations for both `Ok` and `Err` values.
     - Provides a flexible mechanism for chaining operations on the `Ok` value while propagating errors through `Err`.
-    - Includes detailed error handling with tracebacks, custom error codes, and the ability to append multiple error messages.
+    - Includes detailed error handling with tracebacks and the ability to append multiple error messages.
     - Implements helper methods for error propagation, transformation, and querying.
 
 Error Handling:
-    - The `ResultErr` class captures error messages, codes, and optional traceback information.
+    - The `ResultErr` class captures error messages and optional traceback information.
     - Errors only raise an exception when requested (`expect` or `raises` methods).
 
 Constructors:
-    Result(value, success=True, error_msg="", error_code=1, error_code_group=1):
+    Result(value, success=True, error_msg=""):
         Main class that stores the success (Ok) or error (Err).
-    ResultErr(msg="", code=1, error_code_group=1, add_traceback=True, max_messages=20):
+    ResultErr(msg="", add_traceback=True, max_messages=20):
         Exception class for managing error messages.
     Ok(value):
         Constructor for a success variant. Syntactic sugar for: `Result.as_Ok(value)`
-    Err(error_msg, error_code=1, error_code_group=1, add_traceback=True):
+    Err(error_msg, add_traceback=True):
         Constructor for an error variant.  Syntactic sugar for: `Result.as_Err(error)`
 
 Example Usage:
@@ -96,27 +96,6 @@ from copy import deepcopy as _deepcopy
 
 EMPTY_ERROR_MSG = "UnknownError"  # Used for the case of `Err("")`
 
-_BASE_ERROR_CODES = {
-    1: "Unspecified",
-    2: "Undefined",
-    3: "Op_On_Error",
-    4: "Apply",
-    5: "Expect",
-    6: "Map",
-    7: "Attribute",
-    8: "Attribute_Invalid",
-    9: "Attribute_While_Error_State",
-    10: "Method",
-    11: "Function",
-    12: "Math_Op",
-    13: "Float_Op",
-    14: "Int_Op",
-    15: "not_Ok",
-    16: "not_Err",
-    17: "Bitwise_Op",
-    18: "Subscript_Error",
-}
-
 TRACEBACK_EXCLUDE_FILES = {
     # Python Internal Files
     "runpy.py",
@@ -164,7 +143,6 @@ EXCLUDE_ATTRIBUTES = {
     "is_Ok",
     "is_Err",
     "Err_msg",
-    "Err_code",
     "Err_traceback",
     "raises",
     "expect",
@@ -184,16 +162,10 @@ EXCLUDE_ATTRIBUTES = {
     "copy",
     "update_result",
     "add_Err_msg",
-    "register_code",
-    "error_code",
-    "error_code_description",
     "str",
     # "_empty_error",
     "_operator_overload_prep",
     "_success",
-    # "_Ok",
-    # "_Err",
-    "_g",
 }
 
 ATTRIBUTES_MISTAKES = {
@@ -203,7 +175,6 @@ ATTRIBUTES_MISTAKES = {
     "is_ok": "is_Ok",
     "is_err": "is_Err",
     "err_msg": "Err_msg",
-    "err_code": "Err_code",
     "err_traceback": "Err_traceback",
     "expect_err": "expect_Err",
     "apply_err": "apply_Err",
@@ -216,186 +187,22 @@ ATTRIBUTES_MISTAKES = {
 # %% -----------------------------------------------------------------------------------------------
 
 
-class ResultErrCodesDict(dict):
-    """
-    A custom dictionary for managing error code meanings.
-
-    Attributes:
-        int_keys (set): Set of integer keys.
-        str_keys (set): Set of string keys.
-
-    Methods:
-        keys(): Returns all integer keys.
-        values(): Returns all string values.
-        items(): Iterates over key-value pairs.
-        copy(): Creates a shallow copy of the dictionary.
-    """
-
-    def __init__(self, *args, **kwargs):
-        """
-        Initialize the dictionary, supporting key-value pairs
-        while enforcing the custom rules.
-        """
-        super().__init__()
-        self.int_keys = set()
-        self.str_keys = set()
-        # Accept arguments in various forms like dicts, lists, or kwargs
-        for key, value in dict(*args, **kwargs).items():
-            self[key] = value
-
-    def keys(self):
-        """
-        Return a dynamic KeysView reflecting int_keys.
-        """
-        return KeysView(self.int_keys)
-
-    def values(self):
-        """
-        Return a dynamic ValuesView reflecting str_keys.
-        """
-        return ValuesView(self.str_keys)
-
-    def items(self):
-        """
-        Iterate over int_keys and return (key, value) pairs.
-        """
-        for key in self.int_keys:
-            yield key, self[key]
-
-    def copy(self):
-        """
-        Return a shallow copy of the ResultErrCodesDict instance.
-        """
-        new_copy = ResultErrCodesDict()
-        for key, value in self.items():
-            new_copy[key] = value
-        return new_copy
-
-    def __iter__(self):
-        """
-        Iterate only over int_keys.
-        """
-        return iter(self.int_keys)
-
-    def pop(self, *args, **kwargs):
-        raise NotImplementedError("ResultErrCodesDict: Method not supported")
-
-    def popitem(self, *args, **kwargs):
-        raise NotImplementedError("ResultErrCodesDict: Method not supported")
-
-    def reversed(self, *args, **kwargs):
-        raise NotImplementedError("ResultErrCodesDict: Method not supported")
-
-    def setdefault(self, *args, **kwargs):
-        raise NotImplementedError("ResultErrCodesDict: Method not supported")
-
-    def update(self, *args, **kwargs):
-        raise NotImplementedError("ResultErrCodesDict: Method not supported")
-
-    def __setitem__(self, key, value):
-        """
-        Add a new key-value pair while enforcing rules.
-
-        Args:
-            key (int or str): The key, which must be int or str.
-            value (int or str): The corresponding value, which must be the opposite type of the key.
-        """
-        # Enforce key-type order: key is int, value is str
-        if isinstance(key, str):
-            key, value = value, key
-
-        if not (isinstance(key, int) and isinstance(value, str)):
-            raise ValueError("ResultErrCodesDict: Key must be int and value str, or key str and value int.")
-
-        # Remove previous mappings if they exist
-        if key in self:
-            old_value = self[key]
-            del self[key]
-            del self[old_value]
-            self._remove(key, old_value)
-        if value in self:
-            old_key = self[value]
-            del self[value]
-            del self[old_key]
-            self._remove(old_key, value)
-
-        # Add new mappings
-        self.int_keys.add(key)
-        self.str_keys.add(value)
-        super().__setitem__(key, value)
-        super().__setitem__(value, key)
-
-    def __getitem__(self, key):
-        """
-        Retrieve the value associated with a key.
-        - Return 2 for missing string keys.
-        - Return "Undefined" for missing integer keys.
-
-        Args:
-            key (int or str): The key to look up.
-
-        Returns:
-            int or str: The corresponding value.
-
-        Raises:
-            KeyError: If the key is neither int nor str.
-        """
-        if key in self:
-            return super().__getitem__(key)
-        else:
-            # Custom behavior for missing keys
-            if isinstance(key, str):
-                return 2
-            elif isinstance(key, int):
-                return "Undefined"
-            else:
-                raise KeyError("Key must be of type str or int.")
-
-    def __delitem__(self, key):
-        """
-        Deletes both the key and its bidirectional counterpart (int ↔ str).
-        """
-        if key in self:
-            value = self[key]
-            self._remove(key, value)
-            super().__delitem__(key)
-            super().__delitem__(value)
-
-    def _remove(self, key, value):
-        """
-        Safely remove key-value pair references from tracking sets.
-        """
-        if isinstance(key, str):
-            key, value = value, key
-        self.int_keys.remove(key)
-        self.str_keys.remove(value)
-
-
-# %% -----------------------------------------------------------------------------------------------
-
-
 class ResultErr(Exception):
     """
     Custom exception class for error handling in the Result object.
 
-    This class stores multiple error messages and corresponding error codes. It is used
+    This class stores multiple error messages and traceback information. It is used
     to encapsulate error states and operations related to error management.
 
     The object is assumed to be in `error status` when it contains one
     or more error messages (msg). An added error message that is "" is ignored.
 
-    error = ResultErr(msg, code, error_code_group, add_traceback, max_messages)
+    error = ResultErr(msg, add_traceback, max_messages)
 
     Args:
         msg  (str, optional):             Error message(s) to initialize with.
                                           Default is "", to disable error status.
-        code (int, optional):             Error code(s) associated with the message(s).
-                                          Recommended to a code from `ResultErr.error_codes()`.
-                                          Default is 1 ("Unspecified").
-        error_code_group (int, optional): Specify the error_codes group to use for code and message flags.
-                                          Default is 1. Error codes are stored as a class variable,
-                                          so this is useful if you need different sets of error codes within a program.
-        add_traceback (bool, optional):   If True, then code traceback information is added to the message.
+        add_traceback (bool, optional):   If True, then traceback information is added to the message.
         max_messages (int, optional):     The maximum number of error messages to store.
                                           After this, all additional messages are ignored.
                                           Default is 20.
@@ -405,7 +212,7 @@ class ResultErr(Exception):
         size                      (int): Returns the number of error messages.
         is_Ok                    (bool): Returns False if in error status (ie, size == 0).
         is_Err                   (bool): Returns True  if in error status (ie, size >  0).
-        Err_msg             (list[str]): List of the error messages that have been added (does not have to match error_codes[code]).
+        Err_msg             (list[str]): List of the error messages that have been added.
         Err_traceback (list[list[str]]): List of lists that contains the traceback information for each error message
 
 
@@ -422,27 +229,21 @@ class ResultErr(Exception):
         unwrap(*args, **kwargs):
             Returns the list of error messages stored.
 
-        append(msg, code=1):
-            Append a new error message and code.
+        append(msg, add_traceback=True):
+            Append a new error message and traceback information.
 
         copy():
             Return a copy of the current ResultErr object.
 
         clear():
-            Clear all stored error messages and codes.
+            Clear all stored error messages and traceback information.
 
         pop():
-            Remove and return the last error message and code.
+            Remove and return the last error message and traceback information.
             If the size is reduced to zero, then changes to non-error status.
 
         has_msg(msg):
             Check if a specific message exists in the error messages.
-
-        has_code(code):
-            Check if a specific code exists in the error codes.
-
-        error_code(code=None, error_code_group=None):
-            Get the meaning of error codes for a specific code group.
 
 
     Example usage:
@@ -474,29 +275,19 @@ class ResultErr(Exception):
         bad input 2
     """
 
-    _g = 1
-    _error_codes = {1: ResultErrCodesDict(_BASE_ERROR_CODES)}
-
     msg: list[str]
-    code: list[int]
     traceback_info: list[list[str]]
     max_messages: int
 
-    def __init__(self, msg="", code=1, error_code_group=1, add_traceback=True, max_messages=20, *, _levels=-2):
+    def __init__(self, msg="", add_traceback=True, max_messages=20, *, _levels=-2):
         """
         Initialize the ResultErr instance. If msg is "" then the object is
-        initiated as a  `non-error state`, once a msg and code are added, then
+        initiated as a  `non-error state`, once a msg is added, then
         it is considered in `error state`.
 
         Args:
             msg  (str, list, or ResultErr, optional): Error message(s) to store.
-            code (int, list[int], optional):          Error code(s) associated with the message(s).
-                                                      Ignored if msg is a ResultErr object.
-                                                      Default is 1 ("Unspecified").
-            error_code_group (int, optional):         Identify the error_codes group to use for code and message flags.
-                                                      Default is 1. Error codes are stored as a class variable,
-                                                      so this is useful if you need different sets of error codes within a program.
-            add_traceback (bool, optional):   If True, then code traceback information is added to the message.
+            add_traceback (bool, optional):   If True, then traceback information is added to the message.
             max_messages (int, optional):     The maximum number of error messages to store.
                                               After this, all additional messages are ignored.
                                               Default is 20.
@@ -504,19 +295,16 @@ class ResultErr(Exception):
         super().__init__()
         self.max_messages = max_messages if max_messages > 1 else 1
         self.msg = []
-        self.code = []
         self.traceback_info = []
-        self._g = error_code_group if not isinstance(msg, ResultErr) else msg._g
-        self._process_message_and_code(msg, code, _levels=_levels)
+        self._process_error_messages(msg, _levels=_levels)
 
-    def _process_message_and_code(self, msg, code, add_traceback=True, _levels=-2):
-        """Helper to process messages and codes."""
+    def _process_error_messages(self, msg, add_traceback=True, _levels=-2):
+        """Helper to process error messages."""
         if msg == "":
             return
 
         if isinstance(msg, ResultErr):
             self.msg += msg.msg
-            self.code += msg.code
             self.traceback_info += _deepcopy(msg.traceback_info)
             self._check_max_messages()
             return
@@ -524,10 +312,10 @@ class ResultErr(Exception):
         if add_traceback:
             if _levels > -2:
                 if _levels > -1:
-                    raise RuntimeError("ResultErr._process_message_and_code has positive _levels")
+                    raise RuntimeError("ResultErr._process_error_messages has positive _levels")
                 _levels = -2
             tb = traceback.format_stack(limit=5 - _levels)
-            del tb[_levels:]  # drop calls to _process_message_and_code and one above it
+            del tb[_levels:]  # drop calls to _process_error_messages and one above it
             tb = [line for line in tb if not any(exclude in line for exclude in TRACEBACK_EXCLUDE_FILES)]
         else:
             tb = []
@@ -536,13 +324,11 @@ class ResultErr(Exception):
             dim = len(self.msg)
             self.msg += list(map(str.strip, map(str, msg)))
             dim = len(self.msg) - dim
-            self.code += list(code) if isinstance(code, Sequence) else [code] * dim
             self.traceback_info += [tb] * dim
             # self.traceback_info.extend([tb] * dim
         else:
             msg = str(msg).strip()
             self.msg.append(msg)
-            self.code.append(code)
             self.traceback_info.append(tb)
 
         self._check_max_messages()
@@ -550,7 +336,6 @@ class ResultErr(Exception):
     def _check_max_messages(self):
         if len(self.msg) > self.max_messages:
             self.msg = self.msg[: self.max_messages]
-            self.code = self.code[: self.max_messages]
             self.traceback_info = self.traceback_info[: self.max_messages]
 
     @property
@@ -571,56 +356,8 @@ class ResultErr(Exception):
         return [] if self.is_Ok else self.msg
 
     @property
-    def Err_code(self):
-        return [] if self.is_Ok else self.code
-
-    @property
     def Err_traceback(self):
         return [] if self.is_Ok else self.traceback_info
-
-    @staticmethod
-    def register_code(code, description, error_code_group=None):
-        """
-        Register a specific code and description for the group number error_code_group.
-        This code is stored at the class level so it effects all instances for a specific group.
-        If error_code_group is None, then uses the group assigned to self.
-        """
-        g = ResultErr._g if error_code_group is None else error_code_group
-        if g not in ResultErr._error_codes:
-            ResultErr._error_codes[g] = ResultErrCodesDict(_BASE_ERROR_CODES)
-        ec = ResultErr._error_codes[g]
-        # if code in ec:
-        #     raise TypeError(
-        #         "ResultErr.register_code: code already defined. Codes are:\n[code] description\n"
-        #         + "\n".join(f"[{code:>3s}] {msg}" for code, msg in self.error_codes.items())
-        #         + "\n"
-        #     )
-        ec[code] = description
-
-    def error_code(self, code=None, error_code_group=None):
-        """
-        Get an error code and description for a specific code group.
-
-        Args:
-            code  (int, str, optional):        If code is an int, then returns the corresponding description for it.
-                                               If code is a  str, then returns the corresponding int code.
-                                               If set to None, then returns a reflective dictionary with key:value pairs:
-                                               `code:description` and `description:code`
-            error_code_group (int, optional):  Specify error_codes group. If specified as None,
-                                               then uses the code group associated with the instance.
-                                               If group does not exist, then raises an error.
-        """
-        group = self._g if error_code_group is None else error_code_group
-        error_group = self.__class__._error_codes[group]
-        if code is None:
-            return error_group
-        return error_group[code]
-
-    def error_code_description(self, description=None, error_code_group=None):
-        g = self._g if error_code_group is None else error_code_group
-        if description is None:
-            return self.__class__._error_codes[g]
-        return self.__class__._error_codes[g][description]
 
     def raises(self, add_traceback=False, error_msg=""):
         """
@@ -645,18 +382,15 @@ class ResultErr(Exception):
         """Returns the list of error messages stored."""
         return self.msg.copy()
 
-    def append(self, msg, code=1, add_traceback=True, *, _levels=-2):
+    def append(self, msg, add_traceback=True, *, _levels=-2):
         """
-        Append an error message and its code to the instance.
+        Append an error message to the instance.
 
         Args:
             msg  (str, list, or ResultErr, optional): Error message(s) to append.
-            code (int, list[int], optional):          Error code(s) associated with the message(s).
-                                                      Ignored if msg is a ResultErr object.
-                                                      Default is 1 ("Unspecified").
         """
         if len(self.msg) < self.max_messages:
-            self._process_message_and_code(msg, code, add_traceback, _levels=_levels)
+            self._process_error_messages(msg, add_traceback, _levels=_levels)
 
     def set_max_messages(self, max_messages):
         """Set the maximum number of error messages that are kept."""
@@ -674,24 +408,18 @@ class ResultErr(Exception):
     def clear(self):
         """Clear all stored error messages and reset the instance to non-error status."""
         self.msg.clear()
-        self.code.clear()
         self.traceback_info.clear()
 
     def pop(self):
-        """Remove and return the last stored error message and its code."""
-        return self.code.pop(), self.msg.pop(), self.traceback_info.pop()
+        """Remove and return the last stored error message and its traceback info."""
+        try:
+            return self.msg.pop(), self.traceback_info.pop()
+        except Exception:
+            return [], []
 
     def has_msg(self, msg):
         """Check if a specific message exists in the error messages."""
         return msg in self.msg
-
-    def has_code(self, code):
-        """Check if a specific code exists in the error codes."""
-        return code in self.code
-
-    @staticmethod
-    def _str_code(code):
-        return "{:>5}".format(f"[{code}]")
 
     def str(self, sep=" | ", as_repr=True, add_traceback=False):
         """Return a string representation of the error messages.
@@ -710,27 +438,22 @@ class ResultErr(Exception):
 
         if add_traceback:  # ignores sep
             if self.size == 1:
-                s = ("".join(self.traceback_info[0]) + f"\n{self._str_code(self.code[0])} {self.msg[0]}").strip()
+                s = ("".join(self.traceback_info[0]) + f"\n   {self.msg[0]}").strip()
                 return f"ResultErr(\n{s}\n)" if as_repr else f"\n{s}\n"
             else:
-                s = "".join(
-                    [
-                        "".join(tb) + f"\n{self._str_code(c)} {m}"
-                        for c, m, tb in zip(self.code, self.msg, self.traceback_info)
-                    ]
-                )
+                s = "".join(["".join(tb) + f"\n   {m}" for m, tb in zip(self.msg, self.traceback_info)])
                 if len(self.traceback_info[0]) > 0:
                     s = "\n" + s
                 return f"ResultErr({s}\n)" if as_repr else s
 
         if self.size == 1:
-            s = f"{self._str_code(self.code[0])} {self.msg[0]}".strip()
+            s = f"{self.msg[0]}".strip()
             return f"ResultErr({s})" if as_repr else s
 
-        if sep == "\n":
-            s = "\n".join(f"{self._str_code(c)} {m}" for c, m in zip(self.code, self.msg))
+        if sep == "\n" and self.size > 1:
+            s = "\n".join(f"   {m}" for m in self.msg)
             return f"ResultErr({s}\n)" if as_repr else s.strip()
-        s = sep.join(f"{self._str_code(c)} {m}" for c, m in zip(self.code, self.msg)).strip()
+        s = sep.join(f"{m}" for m in self.msg).strip()
         return f"ResultErr({s})" if as_repr else s
 
     def __str__(self):
@@ -746,11 +469,14 @@ class ResultErr(Exception):
     def __hash__(self) -> int:
         return hash(self.str())
 
+    def __bool__(self):
+        return len(self.msg) > 0
+
     def __len__(self):
         return len(self.msg)
 
     def __iter__(self):
-        return iter(zip(self.code, self.msg))
+        return iter(self.msg)
 
     def __copy__(self):
         return self.copy()
@@ -758,8 +484,8 @@ class ResultErr(Exception):
     def __deepcopy__(self, unused=None):
         return self.copy()
 
-    def __contains__(self, code):
-        return code in self.code
+    def __contains__(self, msg):
+        return msg in self.msg
 
     def __iadd__(self, other):  # To get called on addition with assignment e.g. a +=b.
         self.append(other)
@@ -773,12 +499,12 @@ class ResultErr(Exception):
     def __eq__(self, other):  # To get called on comparison using self == other operator.
         # Assumes Err() < Ok()
         if isinstance(other, ResultErr):
-            other = other.code
+            other = other.msg
         elif isinstance(other, Result):
             if other.is_Ok:
                 return False
-            other = other._val.code
-        return self.code == other
+            other = other._val.msg
+        return self.msg == other
 
 
 # %% -----------------------------------------------------------------------------------------------
@@ -791,7 +517,7 @@ class Result:
     This class represents either a success case (`Ok`) with a value or an error case (`Err`).
     The success case is represented as `Ok(value)`,  where `value` is the wrapped object.
     The error   case is represented as `Err(error)`, where `error` is a `ResultErr` object
-    containing one or more error messages, error codes, and traceback information.
+    containing one or more error messages and traceback information.
 
     The Ok(value) variant can wrap any object, except for a ResultErr type.
     Mutable objects, such as lists, are wrapped as a shared reference (assignment by reference).
@@ -826,7 +552,7 @@ class Result:
     The Err(error) variant only allows for attributes and methods that are part of the Result object.
     Otherwise, `Err(error).attrib` and `Err(error).method()` raises a ResultErr exception.
 
-    res = Result(value, success, error_msg, error_code, error_code_group, add_traceback, deepcopy)
+    res = Result(value, success, error_msg, add_traceback, deepcopy)
 
     Args:
         value                (Any):       The value to wrap in the Ok(value).
@@ -836,20 +562,12 @@ class Result:
                                              a) and error_msg="", set Err to str(value)
                                              b) otherwise,        set Err to error_msg,
                                                    if listlike, then each item is treated as a separate message.
-        error_code (int, optional):       Error code associated with the error.
-                                          Default is `1` for `Unspecified`.
-                                          A dict of the currently assigned error codes are returned
-                                          with `Result.error_code()`
-                                          Note, the code description does not have to match the error_msg.
-        error_code_group (int, optional): Specify the error_codes group to use for code and message flags.
-                                          Default is 1. Error codes are stored as a class variable,
-                                          so this is useful if you need different sets of error codes within a program.
         add_traceback (bool, optional):   If True and success is False, adds traceback information to Err.
         deepcopy (bool, optional):        If True, then deepcopy value before wrapping in Ok.
 
     Constructors:
-        res = Result.as_Ok(value, deepcopy=False)    # Initialize as Ok variant.
-        res = Result.as_Err(error_msg, error_code=1) # Initialize as Err variant.
+        res = Result.as_Ok(value, deepcopy=False)  # Initialize as Ok  variant.
+        res = Result.as_Err(error_msg)             # Initialize as Err variant.
 
     Attributes:
         is_Ok    (bool): True if the result is a  success.
@@ -870,11 +588,6 @@ class Result:
             For the Err(error) variant, returns list of error messages.
                 Equivalent to `Err(error).unwrap().msg`
 
-        Err_code (list[int]):
-            For the Ok(value)  variant, returns `[]`.
-            For the Err(error) variant, returns list of error codes.
-                Equivalent to `Err(error).unwrap().code`
-
         Err_traceback (list[list[str]]):
             For the Ok(value)  variant, returns `[]`.
             For the Err(error) variant, returns list of traceback lines.
@@ -882,7 +595,7 @@ class Result:
 
     Methods:
 
-        raises(add_traceback=False, error_msg="", error_code=1):
+        raises(add_traceback=True, error_msg=""):
             If  Ok variant, then returns Ok(value);
             If Err variant, then raises a ResultErr exception`.
             Useful for check during chained operations
@@ -983,7 +696,7 @@ class Result:
             unless type(item) is ResultErr, then returns Err(item).
             If expand is True, then returns `list(iter_wrap())`.
 
-        add_Err_msg(error_msg, error_code=1, add_traceback=True)):
+        add_Err_msg(error_msg, add_traceback=True):
             For the Ok(value)  variant, converts to Err(error_msg).
             For the Err(error) variant, adds an error message.
 
@@ -995,12 +708,6 @@ class Result:
         copy(deepcopy=False):
             Create a copy of the Result.
             If deepcopy=True, the returns Result(deepcopy(value)).
-
-        register_code(code, description, error_code_group=None):
-            Register a specific code and description for the group number error_code_group.
-
-        error_code(code=None, error_code_group=None):
-            Get an error code and description for a specific code group.
 
     Example Usage:
         >>> result = Result.as_Ok("Success")
@@ -1026,15 +733,12 @@ class Result:
     ResultErr = ResultErr
     _success: bool
     _val: object
-    _g: int
 
     def __init__(
         self,
         value,
         success=True,
         error_msg="",
-        error_code=1,
-        error_code_group=1,
         add_traceback=True,
         deepcopy=False,
         *,
@@ -1042,15 +746,11 @@ class Result:
         _levels=-3,
     ):
         if isinstance(value, Result):
-            self._g = value._g
             success = value._success
             value = value._val
-        else:
-            self._g = error_code_group
 
         if isinstance(value, ResultErr):
             self._success = False
-            self._g = value._g
             self._val = value.copy()
             return
 
@@ -1069,22 +769,22 @@ class Result:
             if error_msg == "" and value == "":
                 error_msg = EMPTY_ERROR_MSG
             self._val = (
-                ResultErr(error_msg, error_code, self._g, add_traceback, _levels=_levels)
+                ResultErr(error_msg, add_traceback, _levels=_levels)
                 if error_msg != ""
-                else ResultErr(str(value), error_code, self._g, add_traceback, _levels=_levels)
+                else ResultErr(str(value), add_traceback, _levels=_levels)
             )
 
     @classmethod
-    def as_Ok(cls, value, deepcopy=False, error_code_group=1):
-        return cls(value, error_code_group=error_code_group, deepcopy=deepcopy)
+    def as_Ok(cls, value, deepcopy=False):
+        return cls(value, deepcopy=deepcopy)
 
     @classmethod
-    def as_Err(cls, error_msg, error_code=1, error_code_group=1, add_traceback=True):
-        return cls(EMPTY_ERROR_MSG, False, error_msg, error_code, error_code_group, _levels=-4)
+    def as_Err(cls, error_msg, add_traceback=True):
+        return cls(EMPTY_ERROR_MSG, False, error_msg, add_traceback, _levels=-4)
 
     @classmethod
     def _empty_init(cls):
-        return cls("", _empty_init=True)
+        return cls(EMPTY_ERROR_MSG, _empty_init=True)
 
     @property
     def is_Ok(self):
@@ -1104,9 +804,9 @@ class Result:
         if not self._success:
             # Result.Ok raises error for Err variant
             # Have to operate on new instance for debugpy, otherwise the Locals inspection will convert self to Err.
-            # old method: self.add_Err_msg("Result.Ok attribute for Err variant", 15)
+            # old method: self.add_Err_msg("Result.Ok attribute for Err variant")
             err = ResultErr(self._val)
-            err.append("Result.Ok attribute for Err variant", 15, add_traceback=True)  # 15: "not_Ok",
+            err.append("Result.Ok attribute for Err variant")
             raise err
         return self._val
 
@@ -1120,16 +820,12 @@ class Result:
         if self._success:
             # Result.Err raises error for Ok variant
             # Have to operate on new instance for debugpy, otherwise the Locals inspection will convert self to Err.
-            raise ResultErr("Result.Err attribute for Ok variant", 16, self._g)
+            raise ResultErr("Result.Err attribute for Ok variant")
         return self._val
 
     @property
     def Err_msg(self):
         return [] if self._success else self._val.msg
-
-    @property
-    def Err_code(self):
-        return [] if self._success else self._val.code
 
     @property
     def Err_traceback(self):
@@ -1141,25 +837,25 @@ class Result:
     def unwrap_or(self, default):
         return self._val if self._success else default
 
-    def expect(self, error_msg="", error_code=5):  # 5 -> ResultErr.error_code("Expect")
+    def expect(self, error_msg=""):
         if self._success:
             return self._val
-        self.add_Err_msg("Result.expect for Err variant", error_code, add_traceback=True)
+        self.add_Err_msg("Result.expect for Err variant")
         self.raises(False, error_msg)
 
-    def expect_Err(self, ok_msg="", error_code=5):  # 5 -> ResultErr.error_code("Expect")
+    def expect_Err(self, ok_msg=""):
         if not self._success:
             return self._val
-        self.add_Err_msg("Result.expect_err for Ok variant", error_code, add_traceback=True)
+        self.add_Err_msg("Result.expect_err for Ok variant")
         self.raises(False, ok_msg)
 
-    def raises(self, add_traceback=False, error_msg="", error_code=15):  # 15: "not_Ok",
+    def raises(self, add_traceback=True, error_msg="", *, _levels=-5):
         if self._success:
             return self
         if error_msg != "":
-            self.add_Err_msg(error_msg, error_code, add_traceback=add_traceback)
+            self.add_Err_msg(error_msg, add_traceback, _levels=_levels)
         else:
-            self.add_Err_msg("Result.raises() on Err", error_code, add_traceback=add_traceback)
+            self.add_Err_msg("Result.raises() on Err", add_traceback, _levels=_levels)
             #
         raise self._val  # Result.Err variant raises an exception
 
@@ -1169,59 +865,55 @@ class Result:
     def apply(self, ok_func, *args, **kwargs):
         if self._success:
             try:
-                return Result(ok_func(self._val, *args, **kwargs), error_code_group=self._g)
+                return Result(ok_func(self._val, *args, **kwargs))
             except Exception as e:
-                err = Result.as_Err("Result.apply exception.", self.error_code("Apply"), self._g)
-                err.add_Err_msg(f"{type(e).__name__}: {e}", self.error_code("Apply"), add_traceback=False)
+                err = Result.as_Err("Result.apply exception.")
+                err.add_Err_msg(f"{type(e).__name__}: {e}", False)
         else:
             err = Result(self._val)
-            err.add_Err_msg("Result.apply on Err.", self.error_code("Apply"))
+            err.add_Err_msg("Result.apply on Err.")
         return err
 
     def apply_or(self, default, ok_func, *args, **kwargs):
         if self._success:
             try:
-                return Result(ok_func(self._val, *args, **kwargs), error_code_group=self._g)
+                return Result(ok_func(self._val, *args, **kwargs))
             except Exception:
                 pass
-        return Result(default, error_code_group=self._g)
+        return Result(default)
 
     def apply_or_else(self, err_func, ok_func, *args, **kwargs):
         if self._success:
             try:
-                return Result(ok_func(self._val, *args, **kwargs), error_code_group=self._g)
+                return Result(ok_func(self._val, *args, **kwargs))
             except Exception:
                 try:
-                    return Result(err_func(self._val, *args, **kwargs), error_code_group=self._g)
+                    return Result(err_func(self._val, *args, **kwargs))
                 except Exception:
                     err = ResultErr(
                         "Result.apply_or_else err_func(value) and ok_func(value) raised an exception.",
-                        self.error_code("Apply"),
-                        self._g,
                         False,
                     )
         else:
             err = self._val
         try:
-            return Result(err_func(err, *args, **kwargs), error_code_group=self._g)
+            return Result(err_func(err, *args, **kwargs))
         except Exception as e:
             err = Result.as_Err(
                 "Result.apply_or_else ok_func(value), err_func(value), and err_func(error) raised exceptions.",
-                self.error_code("Apply"),
-                self._g,
             )
-            err.add_Err_msg(f"{type(e).__name__}: {e}", self.error_code("Apply"), add_traceback=False)
+            err.add_Err_msg(f"{type(e).__name__}: {e}", False)
             return err
 
     def apply_Err(self, err_func, *args, **kwargs):
         if self._success:
             return self.copy()
         try:
-            return Result(err_func(self._val, *args, **kwargs), error_code_group=self._g)
+            return Result(err_func(self._val, *args, **kwargs))
         except Exception as e:
             err = self.copy()
-            err.add_Err_msg("Result.apply_err exception.", self.error_code("Map"), add_traceback=True)
-            err.add_Err_msg(f"{type(e).__name__}: {e}", self.error_code("Map"), add_traceback=False)
+            err.add_Err_msg("Result.apply_err exception.")
+            err.add_Err_msg(f"{type(e).__name__}: {e}", False)
             return err
 
     def apply_map(self, ok_func, unwrap=False):
@@ -1233,34 +925,34 @@ class Result:
                     return Result(list(map(ok_func, self._val)))
                 return Result([ok_func(self._val)])
             except Exception as e:
-                err = Result.as_Err("Result.apply_map exception.", self.error_code("Apply"), self._g)
-                err.add_Err_msg(f"{type(e).__name__}: {e}", self.error_code("Apply"), add_traceback=False)
+                err = Result.as_Err("Result.apply_map exception.")
+                err.add_Err_msg(f"{type(e).__name__}: {e}", False)
         else:
             err = Result(self._val)
-            err.add_Err_msg("Result.apply_map on Err.", self.error_code("Apply"))
+            err.add_Err_msg("Result.apply_map on Err.")
         return err
 
     def map(self, ok_func):
         if self._success:
-            return Result(ok_func(self._val), error_code_group=self._g)
+            return Result(ok_func(self._val))
         res = Result(self._val)
-        res.add_Err_msg("Result.map on Err.", self.error_code("Map"))
+        res.add_Err_msg("Result.map on Err.")
         return res
 
     def map_or(self, default, ok_func):
         if not self._success:
-            return Result(default, error_code_group=self._g)
-        return Result(ok_func(self._val), error_code_group=self._g)
+            return Result(default)
+        return Result(ok_func(self._val))
 
     def map_or_else(self, err_func, ok_func):
         if self._success:
-            return Result(ok_func(self._val), error_code_group=self._g)
-        return Result(err_func(self._val), error_code_group=self._g)
+            return Result(ok_func(self._val))
+        return Result(err_func(self._val))
 
     def map_Err(self, err_func):
         if self._success:
             return self.copy()
-        return Result(err_func(self._val), error_code_group=self._g)
+        return Result(err_func(self._val))
 
     def iter_wrap(self, expand=False):
         if expand:
@@ -1285,56 +977,27 @@ class Result:
             return self.iter_unwrap(expand)
         return self.iter_wrap(expand)
 
-    def add_Err_msg(self, error_msg, error_code=1, add_traceback=True):
-        """Convert to error status and append error message and code."""
+    def add_Err_msg(self, error_msg, add_traceback=True, *, _levels=-4):
+        """Convert to error status and append error message."""
         if self._success:
             if error_msg == "" and self._val == "":
                 error_msg = EMPTY_ERROR_MSG
             elif error_msg == "":
                 error_msg = str(self._val)
             self._success = False
-            self._val = ResultErr(error_code_group=self._g)
+            self._val = ResultErr()
         if error_msg != "":
-            self._val.append(error_msg, error_code, add_traceback, _levels=-4)
+            self._val.append(error_msg, add_traceback, _levels=_levels)
 
     def update_result(self, value, create_new=False, deepcopy=False):
         if create_new:
-            return Result(value, error_code_group=self._g, deepcopy=deepcopy)
+            return Result(value, deepcopy=deepcopy)
         self._val = value
         self._success = not isinstance(value, ResultErr)
         return self
 
     def copy(self, deepcopy=True):
         return Result(self, deepcopy=deepcopy)
-
-    def register_code(self, code, description, error_code_group=None):
-        """
-        Register a specific code and description for the group number error_code_group.
-        This code is stored at the class level so it effects all instances for a specific group.
-        If error_code_group is None, then uses the group assigned to self.
-        """
-        group = self._g if error_code_group is None else error_code_group
-        ResultErr.register_code(code, description, group)
-
-    def error_code(self, code=None, error_code_group=None):
-        """
-        Get an error code and description for a specific code group.
-
-        Args:
-            code  (int, str, optional):        If code is an int, then returns the corresponding description for it.
-                                               If code is a  str, then returns the corresponding int code.
-                                               If set to None, then returns a reflective dictionary with key:value pairs:
-                                               `code:description` and `description:code`
-            error_code_group (int, optional):  Specify error_codes group. If specified as None,
-                                               then uses the code group associated with the instance.
-                                               If group does not exist, then raises an error.
-        """
-        group = self._g if error_code_group is None else error_code_group
-        return ResultErr(error_code_group=group).error_code(code)
-
-    def error_code_description(self, description=None, error_code_group=None):
-        group = self._g if error_code_group is None else error_code_group
-        return ResultErr(error_code_group=group).error_code(description)
 
     def str(self):
         if self._success is None:
@@ -1359,36 +1022,31 @@ class Result:
         if isinstance(b, Result):
             if not self._success and not b._success:
                 err = Result(self)
-                err.add_Err_msg(f"{operation} with a and b as Err.", self.error_code("Op_On_Error"), add_traceback=True)
+                err.add_Err_msg(f"{operation} with a and b as Err.")
                 return True, err
             if not b._success:
                 err = Result(b)
-                err.add_Err_msg(f"{operation} with b as Err.", self.error_code("Op_On_Error"), add_traceback=True)
+                err.add_Err_msg(f"{operation} with b as Err.")
                 return True, err
             if self._success:
                 return False, b._val  # no error
 
         if not self._success:
             err = Result(self)
-            err.add_Err_msg(f"{operation} with a as Err.", self.error_code("Op_On_Error"), add_traceback=True)
+            err.add_Err_msg(f"{operation} with a as Err.")
             return True, err
         return False, b  # no error
 
-    def _operator_overload_error(
-        self, e, operation: str, apply_to_self: bool, error_code=12
-    ):  # 12: error_code("Math_Op")
+    def _operator_overload_error(self, e, operation: str, apply_to_self: bool):
         if apply_to_self:
-            self.add_Err_msg(f"{operation} resulted in an Exception.", add_traceback=True)
-            self.add_Err_msg(f"{type(e).__name__}: {e}", error_code, add_traceback=False)
+            self.add_Err_msg(f"{operation} resulted in an Exception.")
+            self.add_Err_msg(f"{type(e).__name__}: {e}", False)
             return self
-        err = Result(
-            f"{operation} resulted in an Exception.", False, error_code_group=self._g, add_traceback=True, _levels=-5
-        )
-        err.add_Err_msg(f"{type(e).__name__}: {e}", error_code, add_traceback=False)
+        err = Result(EMPTY_ERROR_MSG, False, f"{operation} resulted in an Exception.", _levels=-5)
+        err.add_Err_msg(f"{type(e).__name__}: {e}", False)
         return err
 
     def __str__(self):
-        # return f"Err(\"{' | '.join(f"[{c}] {m}" for c, m in zip(self._val.code, self._val.msg))}\")"
         return self.str()
 
     def __repr__(self):
@@ -1421,7 +1079,7 @@ class Result:
             # tb = traceback.format_tb(tb)
             # tb = [line for line in tb if not any(exclude in line for exclude in TRACEBACK_EXCLUDE_FILES)]
             # tb.pop()
-            self.add_Err_msg(f"with block {exc_type} Exception.", add_traceback=False)
+            self.add_Err_msg(f"with block {exc_type} Exception.", False)
             # self._val.traceback_info.pop()
             # self._val.traceback_info.append(tb)
             raise self._val from exc_value
@@ -1458,16 +1116,18 @@ class Result:
         """
         if name in ATTRIBUTES_MISTAKES:
             self.add_Err_msg(
-                f"Result.{name} is a possible case mistake. Did you mean Result.{ATTRIBUTES_MISTAKES[name]} instead? Or did you forget () on a method or put () on an attrib. If Ok(x.{name}) is what you want, then do Ok(x).expect().{name}",
-                self.error_code("Attribute"),
+                f"Result.{name} is a possible case mistake. Did you mean Result.{ATTRIBUTES_MISTAKES[name]} instead?"
+                f" Or did you forget () on a method or put () on an attrib."
+                f" If Ok(x.{name}) is what you want, then do Ok(x).expect().{name}",
             )
         elif name in EXCLUDE_ATTRIBUTES:
             self.add_Err_msg(
-                f"{name} is an excluded attribute/method. Did you forget () on a method or put () on an attrib. If Ok(x.{name}) is what you want, then do Ok(x).expect().{name}",
-                self.error_code("Attribute"),
+                f"{name} is an excluded attribute/method."
+                f" Did you forget () on a method or put () on an attrib."
+                f" If Ok(x.{name}) is what you want, then do Ok(x).expect().{name}",
             )
         elif self.is_Err:
-            self.add_Err_msg(f"VAR.{name} with VAR as Err variant", self.error_code("Attribute_While_Error_State"))
+            self.add_Err_msg(f"VAR.{name} with VAR as Err variant")
 
         self.raises()
 
@@ -1480,23 +1140,23 @@ class Result:
 
                 def method(*args, **kwargs):
                     try:
-                        return Result(attr(*args, **kwargs), error_code_group=self._g)
+                        return Result(attr(*args, **kwargs))
                     except Exception as e:
-                        self.add_Err_msg(f"VAR.{name}() raises {e}", self.error_code("Method"))
+                        self.add_Err_msg(f"VAR.{name}() raises {e}")
                         return self
 
                 return method
             if isinstance(attr, Result):
                 return attr
-            return Result(attr, error_code_group=self._g)
+            return Result(attr)
         except AttributeError:
-            self.add_Err_msg(f"VAR.{name} raises an AttributeError", self.error_code("Attribute"))
+            self.add_Err_msg(f"VAR.{name} raises an AttributeError")
             return self
 
     def __getitem__(self, key):  # index return, a[index]
         if not self._success:
             err = Result(self)
-            err.add_Err_msg(f"Err()[{key}] is not subscriptable.", self.error_code("not_Ok"), add_traceback=True)
+            err.add_Err_msg(f"Err()[{key}] is not subscriptable.")
             return err
         try:
             return Result(self._val[key])
@@ -1505,8 +1165,6 @@ class Result:
                 "",
                 success=False,
                 error_msg=f"Ok()[{key}] raises {e}",
-                error_code=self.error_code("Subscript_Error"),
-                error_code_group=self._g,
             )
 
     def __setitem__(self, key, value):  # set from index, a[index] = XYZ
@@ -1514,12 +1172,9 @@ class Result:
             try:
                 self._val[key] = value
             except Exception as e:
-                self.add_Err_msg(
-                    f"Ok()[{key}]=value raises {e}",
-                    error_code=self.error_code("Subscript_Error"),
-                )
+                self.add_Err_msg(f"Ok()[{key}]=value raises {e}")
         else:
-            self.add_Err_msg(f"Err()[{key}] is not subscriptable.", self.error_code("not_Ok"), add_traceback=True)
+            self.add_Err_msg(f"Err()[{key}] is not subscriptable.")
 
     def __iter__(self):
         return self.iter_wrap()
@@ -1545,7 +1200,7 @@ class Result:
         if errored:
             return other
         try:
-            return Result(self._val + other, error_code_group=self._g)
+            return Result(self._val + other)
         except Exception as e:
             return self._operator_overload_error(e, op, False)
 
@@ -1555,7 +1210,7 @@ class Result:
         if errored:
             return other
         try:
-            return Result(other + self._val, error_code_group=self._g)
+            return Result(other + self._val)
         except Exception as e:
             return self._operator_overload_error(e, op, False)
 
@@ -1577,7 +1232,7 @@ class Result:
         if errored:
             return other
         try:
-            return Result(self._val - other, error_code_group=self._g)
+            return Result(self._val - other)
         except Exception as e:
             return self._operator_overload_error(e, op, False)
 
@@ -1587,7 +1242,7 @@ class Result:
         if errored:
             return other
         try:
-            return Result(other - self._val, error_code_group=self._g)
+            return Result(other - self._val)
         except Exception as e:
             return self._operator_overload_error(e, op, False)
 
@@ -1609,7 +1264,7 @@ class Result:
         if errored:
             return other
         try:
-            return Result(self._val * other, error_code_group=self._g)
+            return Result(self._val * other)
         except Exception as e:
             return self._operator_overload_error(e, op, False)
 
@@ -1619,7 +1274,7 @@ class Result:
         if errored:
             return other
         try:
-            return Result(other * self._val, error_code_group=self._g)
+            return Result(other * self._val)
         except Exception as e:
             return self._operator_overload_error(e, op, False)
 
@@ -1641,7 +1296,7 @@ class Result:
         if errored:
             return other
         try:
-            return Result(self._val / other, error_code_group=self._g)
+            return Result(self._val / other)
         except Exception as e:
             return self._operator_overload_error(e, op, False)
 
@@ -1651,7 +1306,7 @@ class Result:
         if errored:
             return other
         try:
-            return Result(other / self._val, error_code_group=self._g)
+            return Result(other / self._val)
         except Exception as e:
             return self._operator_overload_error(e, op, False)
 
@@ -1673,7 +1328,7 @@ class Result:
         if errored:
             return other
         try:
-            return Result(self._val // other, error_code_group=self._g)
+            return Result(self._val // other)
         except Exception as e:
             return self._operator_overload_error(e, op, False)
 
@@ -1683,7 +1338,7 @@ class Result:
         if errored:
             return other
         try:
-            return Result(other // self._val, error_code_group=self._g)
+            return Result(other // self._val)
         except Exception as e:
             return self._operator_overload_error(e, op, False)
 
@@ -1705,7 +1360,7 @@ class Result:
         if errored:
             return other
         try:
-            return Result(self._val % other, error_code_group=self._g)
+            return Result(self._val % other)
         except Exception as e:
             return self._operator_overload_error(e, op, False)
 
@@ -1715,7 +1370,7 @@ class Result:
         if errored:
             return other
         try:
-            return Result(other % self._val, error_code_group=self._g)
+            return Result(other % self._val)
         except Exception as e:
             return self._operator_overload_error(e, op, False)
 
@@ -1737,7 +1392,7 @@ class Result:
         if errored:
             return other
         try:
-            return Result(self._val**other, error_code_group=self._g)
+            return Result(self._val**other)
         except Exception as e:
             return self._operator_overload_error(e, op, False)
 
@@ -1747,7 +1402,7 @@ class Result:
         if errored:
             return other
         try:
-            return Result(other**self._val, error_code_group=self._g)
+            return Result(other**self._val)
         except Exception as e:
             return self._operator_overload_error(e, op, False)
 
@@ -1769,7 +1424,7 @@ class Result:
         if errored:
             return other
         try:
-            return Result(self._val @ other, error_code_group=self._g)
+            return Result(self._val @ other)
         except Exception as e:
             return self._operator_overload_error(e, op, False)
 
@@ -1779,7 +1434,7 @@ class Result:
         if errored:
             return other
         try:
-            return Result(other @ self._val, error_code_group=self._g)
+            return Result(other @ self._val)
         except Exception as e:
             return self._operator_overload_error(e, op, False)
 
@@ -1789,9 +1444,9 @@ class Result:
         if errored:
             return other
         try:
-            return Result(self._val & other, error_code_group=self._g)
+            return Result(self._val & other)
         except Exception as e:
-            return self._operator_overload_error(e, op, False, self.error_code("Bitwise_Op"))
+            return self._operator_overload_error(e, op, False)
 
     def __or__(self, other):  # bitwise OR, a | b
         op = "a | b"
@@ -1799,9 +1454,9 @@ class Result:
         if errored:
             return other
         try:
-            return Result(self._val | other, error_code_group=self._g)
+            return Result(self._val | other)
         except Exception as e:
-            return self._operator_overload_error(e, op, False, self.error_code("Bitwise_Op"))
+            return self._operator_overload_error(e, op, False)
 
     def __xor__(self, other):  # bitwise XOR (exclusive OR), a ^ b
         op = "a ^ b"
@@ -1809,15 +1464,15 @@ class Result:
         if errored:
             return other
         try:
-            return Result(self._val ^ other, error_code_group=self._g)
+            return Result(self._val ^ other)
         except Exception as e:
-            return self._operator_overload_error(e, op, False, self.error_code("Bitwise_Op"))
+            return self._operator_overload_error(e, op, False)
 
     def __invert__(self):  # bitwise NOT, ~a
         try:
-            return Result(~self._val, error_code_group=self._g)
+            return Result(~self._val)
         except Exception as e:
-            return self._operator_overload_error(e, "~a", False, self.error_code("Bitwise_Op"))
+            return self._operator_overload_error(e, "~a", False)
 
     def __lshift__(self, other):  # left bit shift, a << b
         op = "a << b"
@@ -1825,9 +1480,9 @@ class Result:
         if errored:
             return other
         try:
-            return Result(self._val << other, error_code_group=self._g)
+            return Result(self._val << other)
         except Exception as e:
-            return self._operator_overload_error(e, op, False, self.error_code("Bitwise_Op"))
+            return self._operator_overload_error(e, op, False)
 
     def __rshift__(self, other):  # right bit shift, a >> b
         op = "a >> b"
@@ -1835,9 +1490,9 @@ class Result:
         if errored:
             return other
         try:
-            return Result(self._val >> other, error_code_group=self._g)
+            return Result(self._val >> other)
         except Exception as e:
-            return self._operator_overload_error(e, op, False, self.error_code("Bitwise_Op"))
+            return self._operator_overload_error(e, op, False)
 
     def __rand__(self, other):  # reverse bitwise AND, b & a
         op = "b & a"
@@ -1845,9 +1500,9 @@ class Result:
         if errored:
             return other
         try:
-            return Result(other & self._val, error_code_group=self._g)
+            return Result(other & self._val)
         except Exception as e:
-            return self._operator_overload_error(e, op, False, self.error_code("Bitwise_Op"))
+            return self._operator_overload_error(e, op, False)
 
     def __ror__(self, other):  # reverse bitwise OR, b | a
         op = "b | a"
@@ -1855,9 +1510,9 @@ class Result:
         if errored:
             return other
         try:
-            return Result(other | self._val, error_code_group=self._g)
+            return Result(other | self._val)
         except Exception as e:
-            return self._operator_overload_error(e, op, False, self.error_code("Bitwise_Op"))
+            return self._operator_overload_error(e, op, False)
 
     def __rxor__(self, other):  # reverse bitwise XOR (exclusive OR), b ^ a
         op = "b ^ a"
@@ -1865,9 +1520,9 @@ class Result:
         if errored:
             return other
         try:
-            return Result(other ^ self._val, error_code_group=self._g)
+            return Result(other ^ self._val)
         except Exception as e:
-            return self._operator_overload_error(e, op, False, self.error_code("Bitwise_Op"))
+            return self._operator_overload_error(e, op, False)
 
     def __rlshift__(self, other):  # reverse left bit shift, b << a
         op = "b << a"
@@ -1875,9 +1530,9 @@ class Result:
         if errored:
             return other
         try:
-            return Result(other << self._val, error_code_group=self._g)
+            return Result(other << self._val)
         except Exception as e:
-            return self._operator_overload_error(e, op, False, self.error_code("Bitwise_Op"))
+            return self._operator_overload_error(e, op, False)
 
     def __rrshift__(self, other):  # reverse right bit shift, b >> a
         op = "b >> a"
@@ -1885,63 +1540,63 @@ class Result:
         if errored:
             return other
         try:
-            return Result(other >> self._val, error_code_group=self._g)
+            return Result(other >> self._val)
         except Exception as e:
-            return self._operator_overload_error(e, op, False, self.error_code("Bitwise_Op"))
+            return self._operator_overload_error(e, op, False)
 
     def __abs__(self):  # To get called by built-in abs() method to for absolute value, abs(a)
         if self._success:
             try:
-                return Result(abs(self._val), error_code_group=self._g)
+                return Result(abs(self._val))
             except Exception as e:
                 self.add_Err_msg("Result(abs(a)) resulted in an Exception.")
-                self.add_Err_msg(f"{type(e).__name__}: {e}", 1, add_traceback=False)
+                self.add_Err_msg(f"{type(e).__name__}: {e}", False)
         else:
-            self.add_Err_msg("int(Result(a)) with a as Err.", self.error_code("Op_On_Error"))
+            self.add_Err_msg("int(Result(a)) with a as Err.")
         return self
 
     def __neg__(self):  # negation, -a
         if self._success:
             try:
-                return Result(-self._val, error_code_group=self._g)
+                return Result(-self._val)
             except Exception as e:
                 self.add_Err_msg("Result(-a) resulted in an Exception.")
-                self.add_Err_msg(f"{type(e).__name__}: {e}", 1, add_traceback=False)
+                self.add_Err_msg(f"{type(e).__name__}: {e}", False)
         else:
-            self.add_Err_msg("int(Result(a)) with a as Err.", self.error_code("Op_On_Error"))
+            self.add_Err_msg("int(Result(a)) with a as Err.")
         return self
 
     def __pos__(self):  # unary positive, +a
         if self._success:
             try:
-                return Result(+self._val, error_code_group=self._g)
+                return Result(+self._val)
             except Exception as e:
                 self.add_Err_msg("Result(+a) resulted in an Exception.")
-                self.add_Err_msg(f"{type(e).__name__}: {e}", 1, add_traceback=False)
+                self.add_Err_msg(f"{type(e).__name__}: {e}", False)
         else:
-            self.add_Err_msg("int(Result(a)) with a as Err.", self.error_code("Op_On_Error"))
+            self.add_Err_msg("int(Result(a)) with a as Err.")
         return self
 
     def __int__(self):  # To get called by built-in int() method to convert a type to an int.
         if self._success:
             try:
-                return Result(int(self._val), error_code_group=self._g)
+                return Result(int(self._val))
             except Exception as e:
                 self.add_Err_msg("Result(int(a)) resulted in an Exception.")
-                self.add_Err_msg(f"{type(e).__name__}: {e}", self.error_code("Int_Op"), add_traceback=False)
+                self.add_Err_msg(f"{type(e).__name__}: {e}", False)
         else:
-            self.add_Err_msg("int(Result(a)) with a as Err.", self.error_code("Op_On_Error"))
+            self.add_Err_msg("int(Result(a)) with a as Err.")
         return self
 
     def __float__(self):  # To get called by built-in float() method to convert a type to float.
         if self._success:
             try:
-                return Result(float(self._val), error_code_group=self._g)
+                return Result(float(self._val))
             except Exception as e:
                 self.add_Err_msg("Result(float(a)) resulted in an Exception.")
-                self.add_Err_msg(f"{type(e).__name__}: {e}", self.error_code("Float_Op"), add_traceback=False)
+                self.add_Err_msg(f"{type(e).__name__}: {e}", False)
         else:
-            self.add_Err_msg("float(Result(a)) with a as Err.", self.error_code("Op_On_Error"))
+            self.add_Err_msg("float(Result(a)) with a as Err.")
         return self
 
     def __lt__(self, other):  # compare self < other.
@@ -2011,8 +1666,8 @@ class Ok:
         >>> print(result.unwrap())  # Outputs: 42
     """
 
-    def __new__(self, value, deepcopy=False, error_code_group=1):
-        return Result(value, deepcopy=deepcopy, error_code_group=error_code_group)
+    def __new__(self, value, deepcopy=False):
+        return Result(value, deepcopy=deepcopy)
 
 
 class Err:
@@ -2024,8 +1679,8 @@ class Err:
         >>> print(error.unwrap())         # Outputs: ResultErr("Error message")
     """
 
-    def __new__(self, error_msg, error_code=1, error_code_group=1, add_traceback=True):
-        return Result(EMPTY_ERROR_MSG, False, error_msg, error_code, error_code_group, add_traceback, _levels=-4)
+    def __new__(self, error_msg, add_traceback=True):
+        return Result(EMPTY_ERROR_MSG, False, error_msg, add_traceback, _levels=-4)
 
 
 # %% -----------------------------------------------------------------------------------------------
