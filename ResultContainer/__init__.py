@@ -1479,6 +1479,34 @@ class Result:
             self.add_Err_msg(f"VAR.{name} raises an AttributeError", self.error_code("Attribute"))
             return self
 
+    def __getitem__(self, key):  # index return, a[index]
+        if not self._success:
+            err = Result(self)
+            err.add_Err_msg(f"Err()[{key}] is not subscriptable.", self.error_code("not_Ok"), add_traceback=True)
+            return err
+        try:
+            return Result(self._val[key])
+        except Exception as e:
+            return Result(
+                "",
+                success=False,
+                error_msg=f"Ok()[{key}] raises {e}",
+                error_code=self.error_code("Subscript_Error"),
+                error_code_group=self._g,
+            )
+
+    def __setitem__(self, key, value):  # set from index, a[index] = XYZ
+        if self._success:
+            try:
+                self._val[key] = value
+            except Exception as e:
+                self.add_Err_msg(
+                    f"Ok()[{key}]=value raises {e}",
+                    error_code=self.error_code("Subscript_Error"),
+                )
+        else:
+            self.add_Err_msg(f"Err()[{key}] is not subscriptable.", self.error_code("not_Ok"), add_traceback=True)
+
     def __iter__(self):
         return self.iter_wrap()
 
