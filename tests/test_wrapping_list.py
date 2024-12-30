@@ -46,6 +46,47 @@ def test_list_iter_err():
     assert not enter_loop
 
 
+def test_list_get_index():
+    lst = [-2, -1, 0, 1, 2, 3]
+    result = Ok(lst, deepcopy=True)
+    assert len(result) == len(lst)
+
+    dim = len(lst)
+    for i in range(dim):
+        assert result[i] == lst[i]
+
+    for i in range(-1, 1 - dim):
+        assert result[i] == lst[i]
+
+    for i in range(1, dim):
+        assert result[i - 1 : i] == lst[i - 1 : i]
+
+    assert result[0:dim] == lst[0:dim]
+    assert result[0 : dim - 2] == lst[0 : dim - 2]
+    assert result[1 : dim - 2] == lst[1 : dim - 2]
+
+
+def test_list_set_index():
+    lst = [-2, -1, 0, 1, 2, 3]
+    result = Ok([-2, -1, 0, 1, 2, 3], deepcopy=True)
+    assert len(result) == len(lst)
+
+    result[1] = 99
+    assert result != lst
+    lst[1] = 99
+    assert result == lst
+
+    result[-2] = 98
+    assert result != lst
+    lst[-2] = 98
+    assert result == lst
+
+    result[2:4] = [97, 97]
+    assert result != lst
+    lst[2:4] = [97, 97]
+    assert result == lst
+
+
 def test_list_iter_values():
     result = Ok([0, 1, 2, 3, 4])
     enter_loop = False

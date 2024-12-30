@@ -28,6 +28,34 @@ def test_result_err_initialization():
         result.raises()
 
 
+# Basic Initialization Tests
+def test_result_ok_attribute():
+    result = Ok(42)
+    assert result.Ok == 42
+    assert result.unwrap() == 42
+    assert result.expect() == 42
+    assert result.raises() == Ok(42)
+    with pytest.raises(ResultErr):
+        _ = result.Err
+
+
+def test_result_err_initialization():
+    error_message = "An error occurred"
+    result = Result.as_Err(error_message)
+    assert result.unwrap() == Err(error_message)
+    assert result.is_Ok is False
+    assert result.is_Err is True
+
+    with pytest.raises(ResultErr):
+        _ = result.Ok
+
+    with pytest.raises(ResultErr):
+        result.expect()
+
+    with pytest.raises(ResultErr):
+        result.raises()
+
+
 # Edge Case Initialization
 def test_result_ok_with_none():
     result = Result.as_Ok(None)
@@ -87,6 +115,60 @@ def test_iter_list():
     enter_loop = False
     for i, j in enumerate(result):
         assert j == lst[i]
+        enter_loop = True
+    assert enter_loop
+
+
+# Reverse Tests
+def test_reversed_err():
+    result = Err(10)
+    enter_loop = False
+    for i in reversed(result):
+        enter_loop = True  # should never be true
+    assert not enter_loop
+
+
+def test_reversed_scalar():
+    result = Ok(10)
+    enter_loop = False
+    for i in reversed(result):
+        assert i == 10
+        enter_loop = True
+    assert enter_loop
+
+
+def test_reversed_list():
+    lst = [0, 1, 2, 3]
+    result = Result.as_Ok(lst)
+    enter_loop = False
+    rev = reversed(lst)
+    for j in reversed(result):
+        assert j == next(rev)
+        enter_loop = True
+    assert enter_loop
+
+    rev = lst[::-1]
+    enter_loop = False
+    for i, j in enumerate(reversed(result)):
+        assert j == rev[i]
+        enter_loop = True
+    assert enter_loop
+
+    lst[-1] = 99  # Because mutable, Ok(lst) changes too
+    rev = lst[::-1]
+    enter_loop = False
+    for i, j in enumerate(reversed(result)):
+        assert j == rev[i]
+        enter_loop = True
+    assert enter_loop
+
+    lst = [0, 1, 2, 3]
+    result = Result.as_Ok(lst, deepcopy=True)
+    enter_loop = False
+    rev = lst[::-1]
+    lst[-1] = 99  # does not effect result or rev because of deepcopy
+    for i, j in enumerate(reversed(result)):
+        assert j == rev[i]
         enter_loop = True
     assert enter_loop
 
