@@ -5,23 +5,26 @@
 </p>
 
 
-ResultContainer is a python module that contains the `Result` class that mimics the Result Result Enum. The Result Enum is used for situations when errors are expected and are easily handled, or you do not want to have lots of try/except clauses. The Result enum wraps a value in an `Ok` variant, until there is an exception or error raised, and then it is converted to the `Err` variant. 
+ResultContainer is a python module with a `Result` class that mimics the [Result Result Enum](https://doc.rust-lang.org/std/result/enum.Result.html). The Result Enum is used for situations when errors are expected and are easily handled, or you do not want to have lots of try/except clauses. The Result enum wraps a value in an `Ok` variant, until there is an exception or error raised, and then it is converted to the `Err` variant. The `Err` variant is a `ResultErr` object stored in the `Result` that contains the error messages and traceback information. The `Result` object includes similar methods to the Result Result Enum for inquiry about the state, mapping functions, and passing attributes/methods to the containing `value`.
 
-The two Result states are:
+#### `Result` Variants
 
-- `Result.Ok(value)`
+- `Ok(value)`
   - `value` is wrapped within an `Ok`.
-- `Result.Err(e)`
-  - `e` is an error message wrapped within an `Err`. 
+  - Constructor: `Result.as_Ok(value)`
+- `Err(e)`
+  - `e` is a `ResultErr` object wrapped within an `Err`. 
+  - Constructor: `Result.as_Err(error_msg)`
 
 
 #### Properties of the `Result` Variants
 
-##### `Result.Ok(value)`
+##### `Ok(value)`
 
-- Represents success (non-error state). The `value` is wrapped within the `Ok()`.
+- Represents success (non-error state).  
+  The `value` is wrapped within the `Ok()`.
 - Can be initialized with `Ok(value)`
-  - `Ok(value)` &nbsp; ➥&nbsp; syntactic-sugar for &nbsp; ➥&nbsp; `Result.Ok(value)`
+  - `Ok(value)` &nbsp; ➥&nbsp; syntactic-sugar for &nbsp; ➥&nbsp; `Result.as_Ok(value)`
 - Math operations are redirected to `value` and rewrap the solution or concatenate the errors.
   - `Ok(value1) + Ok(value2) `&nbsp; &nbsp; ➣ &nbsp; `Ok(value1 + value2)`
   - `Ok(value1) + Err(e) `&nbsp; &nbsp; ➣ &nbsp; `Err(e + "a + b with b as Err")`
@@ -29,7 +32,8 @@ The two Result states are:
 - All attributes and methods not associated with `Result` are redirected to `value`.
   - `Ok(value).method()` is equivalent to `Ok(value.method())` and 
     `Ok(value).attrib` is equivalent to `Ok(value.attrib)`.
-  - `Ok(value).raises()` does NOT become `Ok(value.raises())` because `Result.raises()` exists.
+  - `Ok(value).raises()` does NOT become `Ok(value.raises())`  
+    because `Result.raises()` is a native `Result` method.
 - Comparisons redirect to comparing the wrapped `value` if `Ok`. But mixed comparisons assume: 
   `Err(e) < Ok(value)` and `Err(e1) == Err(e2)` for any `value`, `e`, `e1`, and `e2`.
   - `Ok(value1) < Ok(value2) `&nbsp; &nbsp; ➣ &nbsp; `value1 < value`
@@ -38,14 +42,14 @@ The two Result states are:
   - `Err(e1) < Err(e2) ` &nbsp; ➣ &nbsp; `False`
   - `Err(e1) <= Err(e2) ` &nbsp; ➣ &nbsp; `True`
 
-##### `Result.Err(e)`:
+##### `Err(e)`:
 
-- Represents a failure (error-state) and contains one more more error messages.
+- Represents a failure (error-state) and contains `e` as a `ResultErr` object  
+  that stores error messages and traceback information.
 - Can be initialized with `Err(error_msg)`
-  - `Err(e)` &nbsp; ➥&nbsp; syntactic-sugar for &nbsp; ➥&nbsp;  `Result.Err(e)`
+  - `Err(e)` &nbsp; ➥&nbsp; syntactic-sugar for &nbsp; ➥&nbsp;  `Result.as_Err(e)`
 
 - If an `Ok(value)` operation fails, then it is converted to an `Err(e)`, where `e` stores the error message.
-  - `e` contains an error message, error code, and traceback information where the error occured.
 - Any operation on `Err(e)` results in another error message being appended to `e`.
 
 There are methods built into `Result` to check if an error has been raised, or the unwrap the value/error to get its contents. 
@@ -67,7 +71,52 @@ or you can clone the respository with
 ```bash
 git clone https://github.com/ScottBoyce-Python/ResultContainer.git
 ```
-and then move the file `ResultContainer/ResultContainer.py` to wherever you want to use it.
+then rename the file `ResultContainer/__init__.py` to  `ResultContainer/ResultContainer.py` and move `ResultContainer.py` to wherever you want to use it.
+
+## Result Initialization
+
+```python
+# Only the first argument is required for all constructors
+
+# Main object signature:
+res = Result(value, success, error_msg, error_code, error_code_group, add_traceback, deepcopy) # Construct either Ok or Er
+
+# Classmethod signatures:
+res = Result.as_Ok(value, deepcopy, error_code_group)                                # Construct Ok  variant
+
+res = Result.as_Err(error_msg, error_code, error_code_group, add_traceback)          # Construct Err variant
+    
+# Syntact Sugar Constructors:
+res = Ok(value, deepcopy, error_code_group)                                          # Construct Ok  variant
+
+res = Err(error_msg, error_code, error_code_group, add_traceback)                    # Construct Err variant
+
+# Arguments:
+# 
+#        value                      (Any): The value to wrap in the Ok(value).
+#                                          If value is a Result    object, then returns value;      ignores other args.
+#                                          If value is a ResultErr object, then returns Err(value); ignores other args.
+#        success         (bool, optional): True if success, False for error. Default is True.
+#        error_msg        (Any, optional): If success is False:
+#                                             a) and error_msg="", return Err( str(value) )
+#                                             b) otherwise,        return Err( str(error_msg) ),
+#                                                   if error_msg is listlike, then each item is appended as a separate message.
+#                                          Default is "".
+#        error_code       (int, optional): Error code associated with the error.
+#                                          Default is `1` for `Unspecified`.
+#                                          A dict of the currently assigned error codes are returned with `Result.error_code()`
+#                                          Note, the code description does not have to match the error_msg.
+#        error_code_group (int, optional): Specify the error_codes group to use for code and message flags.
+#                                          Default is 1. Error codes are stored as a class variable,
+#                                          so this is useful if you need different sets of error codes within a program.
+#                                          Most of the time you will never need to use this feature!
+#        add_traceback (bool, optional):   If True and constructing Err variant, adds traceback information to Err.
+#                                          Default is True.
+#        deepcopy (bool, optional):        If True, then deepcopy value before wrapping in Ok. Default is False.
+#
+```
+
+
 
 
 ## Usage
@@ -80,21 +129,21 @@ Below are examples showcasing how to create and interact with a `ResultContainer
 from ResultContainer import Result, Ok, Err
 
 # Wrap values in Ok state:
-a = Result(5)   # Default is to store as Ok.
+a = Result(5)   # Default is to store as Ok (success=True).
 
 # Explicitly wrap values in Ok state:
-a = Result.Ok(5)
+a = Result.as_Ok(5)
 
-# Wrap values in Ok state, Ok(value) is equalivent to Result.Ok()
+# Wrap values in Ok state, Ok(value) is equalivent to Result.as_Ok()
 a = Ok(5)
 
-# Wrap values as an error 
-a = Result(5, False)   # Flag says it is an error, so stored as Err("5")
-                       #    Note "5" is the error message and NOT the value.
+# Wrap values as an error -------------------------------------------------------------------------------
+a = Result(5, success=False)   # Flag says it is an error, so stored as Err("5")
+                               #    Note "5" becomes the error message because error_msg was not provided.
 # Explicitly wrap values in Err state:
-a = Result.Err(5)
+a = Result.as_Err(5)
 
-# Wrap values in Err state, Err(value) is equalivent to Result.Err()
+# Wrap values in Err state, Err(value) is equalivent to Result.as_Err()
 a = Err(5)
 
 ```
@@ -102,15 +151,22 @@ a = Err(5)
 ### Math Operations with a Result
 
 ```python
+from ResultContainer import Ok
 # Addition, Subtraction, Multiplication and Division
-a = Result.Ok(5)
-b = Result.Ok(50)
+a = Ok(5)
+b = Ok(50)
 c = a + b         # c = Ok(55)
 d = c - 20        # d = Ok(35)
 e = d * 2         # e = Ok(70)
 e /= 10           # e = Ok(7)
 f = e / 0         # f = Err("a / b resulted in an Exception. | ZeroDivisionError: division by zero")
 g = f + 1         # g = Err("a / b resulted in an Exception. | ZeroDivisionError: division by zero | a + b with a as Err.")
+
+# Interally unwraps the value to use its operation, then rewraps the result.
+# This results in the following behaivor:
+x = Ok([1, 2, 3])
+y = Ok([4, 5, 6, 7])
+z = x + y         # z = Ok([1, 2, 3, 4, 5, 6, 7])
 
 ```
 
