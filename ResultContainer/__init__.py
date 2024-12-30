@@ -1360,15 +1360,17 @@ class Result:
             return True, err
         return False, b  # no error
 
-    def _operator_overload_error(self, e, operation: str, apply_to_self: bool):
+    def _operator_overload_error(
+        self, e, operation: str, apply_to_self: bool, error_code=12
+    ):  # 12: error_code("Math_Op")
         if apply_to_self:
             self.add_Err_msg(f"{operation} resulted in an Exception.", add_traceback=True)
-            self.add_Err_msg(f"{type(e).__name__}: {e}", self.error_code("Math_Op"), add_traceback=False)
+            self.add_Err_msg(f"{type(e).__name__}: {e}", error_code, add_traceback=False)
             return self
         err = Result(
             f"{operation} resulted in an Exception.", False, error_code_group=self._g, add_traceback=True, _levels=-5
         )
-        err.add_Err_msg(f"{type(e).__name__}: {e}", self.error_code("Math_Op"), add_traceback=False)
+        err.add_Err_msg(f"{type(e).__name__}: {e}", error_code, add_traceback=False)
         return err
 
     def __str__(self):
