@@ -857,7 +857,7 @@ class Result:
         deepcopy=False,
         *,
         _empty_init=False,
-        _levels=-3,
+        _levels=-4,
     ):
         if isinstance(value, Result):
             self._success = value._success
@@ -890,8 +890,8 @@ class Result:
         return cls(value, deepcopy=deepcopy)
 
     @classmethod
-    def as_Err(cls, error_msg, add_traceback: bool = True):
-        return cls(EMPTY_ERROR_MSG, False, error_msg, add_traceback, _levels=-4)
+    def as_Err(cls, error_msg, add_traceback: bool = True, *, _levels=-5):
+        return cls(EMPTY_ERROR_MSG, False, error_msg, add_traceback, _levels=_levels)
 
     @classmethod
     def _empty_init(cls):
@@ -917,8 +917,8 @@ class Result:
             # Have to operate on new instance for debugpy, otherwise the Locals inspection will convert self to Err.
             # old method: self.add_Err_msg("Result.Ok attribute for Err variant")
             err = ResultErr(self._val)
-            err.append("Result.Ok attribute for Err variant")
-            raise err
+            err.append("Result.Ok attribute for Err variant", _levels=-3)
+            raise err  # Ok attribute accessed while in Err state
         return self._val
 
     @property
@@ -931,7 +931,7 @@ class Result:
         if self._success:
             # Result.Err raises error for Ok variant
             # Have to operate on new instance for debugpy, otherwise the Locals inspection will convert self to Err.
-            raise ResultErr("Result.Err attribute for Ok variant")
+            raise ResultErr("Result.Err attribute for Ok variant", _levels=-3)
         return self._val
 
     @property
@@ -948,19 +948,19 @@ class Result:
     def unwrap_or(self, default):
         return self._val if self._success else default
 
-    def expect(self, error_msg=""):
+    def expect(self, error_msg="", *, _levels=-4):
         if self._success:
             return self._val
-        self.add_Err_msg("Result.expect for Err variant")
+        self.add_Err_msg("Result.expect() for Err variant", _levels=_levels)
         self.raises(False, error_msg)
 
-    def expect_Err(self, ok_msg=""):
+    def expect_Err(self, ok_msg="", *, _levels=-4):
         if not self._success:
             return self._val
-        self.add_Err_msg("Result.expect_err for Ok variant")
+        self.add_Err_msg("Result.expect_err() for Ok variant", _levels=_levels)
         self.raises(False, ok_msg)
 
-    def raises(self, add_traceback: bool = True, error_msg="", *, _levels=-5):
+    def raises(self, add_traceback: bool = True, error_msg="", *, _levels=-4):
         if self._success:
             return self
         if error_msg != "":
@@ -968,7 +968,7 @@ class Result:
         else:
             self.add_Err_msg("Result.raises() on Err", add_traceback, _levels=_levels)
             #
-        raise self._val  # Result.Err variant raises an exception
+        raise self._val  # Err variant raises exception
 
     def is_Ok_and(self, bool_ok_func, *args, **kwargs) -> bool:
         return self._success and bool_ok_func(self._val, *args, **kwargs)
@@ -978,11 +978,11 @@ class Result:
             try:
                 return Result(ok_func(self._val, *args, **kwargs))
             except Exception as e:
-                err = Result.as_Err("Result.apply exception")
+                err = Result.as_Err("Result.apply exception", _levels=-6)
                 err.add_Err_msg(f"{type(e).__name__}: {e}", False)
         else:
             err = Result(self._val)
-            err.add_Err_msg("Result.apply on Err")
+            err.add_Err_msg("Result.apply on Err", _levels=-4)
         return err
 
     def apply_or(self, default, ok_func, *args, **kwargs):
@@ -1012,6 +1012,7 @@ class Result:
         except Exception as e:
             err = Result.as_Err(
                 "Result.apply_or_else ok_func(value), err_func(value), and err_func(error) raised exceptions",
+                _levels=-6,
             )
             err.add_Err_msg(f"{type(e).__name__}: {e}", False)
             return err
@@ -1023,7 +1024,7 @@ class Result:
             return Result(err_func(self._val, *args, **kwargs))
         except Exception as e:
             err = self.copy()
-            err.add_Err_msg("Result.apply_err exception")
+            err.add_Err_msg("Result.apply_err exception", _levels=-4)
             err.add_Err_msg(f"{type(e).__name__}: {e}", False)
             return err
 
@@ -1036,7 +1037,7 @@ class Result:
                     return Result(list(map(ok_func, self._val)))
                 return Result([ok_func(self._val)])
             except Exception as e:
-                err = Result.as_Err("Result.apply_map exception")
+                err = Result.as_Err("Result.apply_map exception", _levels=-6)
                 err.add_Err_msg(f"{type(e).__name__}: {e}", False)
         else:
             err = Result(self._val)
@@ -1047,7 +1048,7 @@ class Result:
         if self._success:
             return Result(ok_func(self._val))
         res = Result(self._val)
-        res.add_Err_msg("Result.map on Err")
+        res.add_Err_msg("Result.map on Err", _levels=-4)
         return res
 
     def map_or(self, default, ok_func):
@@ -1101,7 +1102,7 @@ class Result:
         """
         return False if self._success else self._val.contains(sub_msg)
 
-    def add_Err_msg(self, error_msg, add_traceback: bool = True, *, _levels=-4):
+    def add_Err_msg(self, error_msg, add_traceback: bool = True, *, _levels=-3):
         """Convert to error status and append error message."""
         if self._success:
             if error_msg == "" and self._val == "":
@@ -1161,7 +1162,7 @@ class Result:
             return f"Ok({val})"
         return f'Err("{" | ".join(f"{m}" for m in self._val.msg if m != "")}")'
 
-    def _operator_overload_prep(self, b, operation: str):
+    def _operator_overload_prep(self, b, operation: str, *, _levels=-5):
         # Checks and returns:
         #  a.err and b.err -> True  and a&b error
         #  b.err           -> True  and   b error
@@ -1174,27 +1175,27 @@ class Result:
         if isinstance(b, Result):
             if not self._success and not b._success:
                 err = Result(self)
-                err.add_Err_msg(f"{operation} with a and b as Err")
+                err.add_Err_msg(f"{operation} with a and b as Err", _levels=_levels)
                 return True, err
             if not b._success:
                 err = Result(b)
-                err.add_Err_msg(f"{operation} with b as Err")
+                err.add_Err_msg(f"{operation} with b as Err", _levels=_levels)
                 return True, err
             if self._success:
                 return False, b._val  # no error
 
         if not self._success:
             err = Result(self)
-            err.add_Err_msg(f"{operation} with a as Err")
+            err.add_Err_msg(f"{operation} with a as Err", _levels=_levels)
             return True, err
         return False, b  # no error
 
-    def _operator_overload_error(self, e, operation: str, apply_to_self: bool):
+    def _operator_overload_error(self, e, operation: str, apply_to_self: bool, *, _levels=-5):
         if apply_to_self:
-            self.add_Err_msg(f"{operation} resulted in an Exception")
+            self.add_Err_msg(f"{operation} resulted in an Exception", _levels=_levels)
             self.add_Err_msg(f"{type(e).__name__}: {e}", False)
             return self
-        err = Result(EMPTY_ERROR_MSG, False, f"{operation} resulted in an Exception", _levels=-5)
+        err = Result(EMPTY_ERROR_MSG, False, f"{operation} resulted in an Exception", _levels=_levels)
         err.add_Err_msg(f"{type(e).__name__}: {e}", False)
         return err
 
@@ -1207,7 +1208,7 @@ class Result:
     def __len__(self):
         if self._success:
             return len(self._val)
-        self.add_Err_msg("len(Err) not allowed")
+        self.add_Err_msg("len(Err) not allowed", _levels=-4)
         return 0
 
     def __bool__(self):
@@ -1269,15 +1270,17 @@ class Result:
                 f"Result.{name} is a possible case mistake. Did you mean Result.{ATTRIBUTES_MISTAKES[name]} instead?"
                 f" Or did you forget () on a method or put () on an attrib."
                 f" If Ok(x.{name}) is what you want, then do Ok(x).expect().{name}",
+                _levels=-4,
             )
         elif name in EXCLUDE_ATTRIBUTES:
             self.add_Err_msg(
                 f"{name} is an excluded attribute/method."
                 f" Did you forget () on a method or put () on an attrib."
                 f" If Ok(x.{name}) is what you want, then do Ok(x).expect().{name}",
+                _levels=-4,
             )
         elif self.is_Err:
-            self.add_Err_msg(f"VAR.{name} with VAR as Err variant")
+            self.add_Err_msg(f"VAR.{name} with VAR as Err variant", _levels=-4)
 
         self.raises()
 
@@ -1292,7 +1295,7 @@ class Result:
                     try:
                         return Result(attr(*args, **kwargs))
                     except Exception as e:
-                        self.add_Err_msg(f"VAR.{name}() raises {e}")
+                        self.add_Err_msg(f"VAR.{name}() raises {e}", _levels=-4)
                         return self
 
                 return method
@@ -1300,13 +1303,16 @@ class Result:
                 return attr
             return Result(attr)
         except AttributeError:
-            self.add_Err_msg(f"VAR.{name} raises an AttributeError")
+            self.add_Err_msg(f"VAR.{name} raises an AttributeError", _levels=-4)
             return self
 
     def __getitem__(self, key):  # index return, a[index]
         if not self._success:
             err = Result(self)
-            err.add_Err_msg(f"Err()[{key}] is not subscriptable")
+            if isinstance(key, str):
+                err.add_Err_msg(f'Err()["{key}"] is not subscriptable', _levels=-4)
+            else:
+                err.add_Err_msg(f"Err()[{key}] is not subscriptable", _levels=-4)
             return err
         try:
             return Result(self._val[key])
@@ -1322,9 +1328,9 @@ class Result:
             try:
                 self._val[key] = value
             except Exception as e:
-                self.add_Err_msg(f"Ok()[{key}]=value raises {e}")
+                self.add_Err_msg(f"Ok()[{key}]=value raises {e}", _levels=-4)
         else:
-            self.add_Err_msg(f"Err()[{key}] is not subscriptable")
+            self.add_Err_msg(f"Err()[{key}] is not subscriptable", _levels=-4)
 
     def __iter__(self):
         return self.iter_wrap()
@@ -1336,7 +1342,7 @@ class Result:
         op = "a += b"
         errored, other = self._operator_overload_prep(other, op)
         if errored:
-            self.add_Err_msg(other)
+            self.add_Err_msg(other, _levels=-4)
             return self
         try:
             self._val += other
@@ -1368,7 +1374,7 @@ class Result:
         op = "a -= b"
         errored, other = self._operator_overload_prep(other, op)
         if errored:
-            self.add_Err_msg(other)
+            self.add_Err_msg(other, _levels=-4)
             return self
         try:
             self._val -= other
@@ -1400,7 +1406,7 @@ class Result:
         op = "a *= b"
         errored, other = self._operator_overload_prep(other, op)
         if errored:
-            self.add_Err_msg(other)
+            self.add_Err_msg(other, _levels=-4)
             return self
         try:
             self._val *= other
@@ -1432,7 +1438,7 @@ class Result:
         op = "a /= b"
         errored, other = self._operator_overload_prep(other, op)
         if errored:
-            self.add_Err_msg(other)
+            self.add_Err_msg(other, _levels=-4)
             return self
         try:
             self._val /= other
@@ -1464,7 +1470,7 @@ class Result:
         op = "a //= b"
         errored, other = self._operator_overload_prep(other, op)
         if errored:
-            self.add_Err_msg(other)
+            self.add_Err_msg(other, _levels=-4)
             return self
         try:
             self._val //= other
@@ -1496,7 +1502,7 @@ class Result:
         op = "a %= b"
         errored, other = self._operator_overload_prep(other, op)
         if errored:
-            self.add_Err_msg(other)
+            self.add_Err_msg(other, _levels=-4)
             return self
         try:
             self._val %= other
@@ -1528,7 +1534,7 @@ class Result:
         op = "a **= b"
         errored, other = self._operator_overload_prep(other, op)
         if errored:
-            self.add_Err_msg(other)
+            self.add_Err_msg(other, _levels=-4)
             return self
         try:
             self._val **= other
@@ -1560,7 +1566,7 @@ class Result:
         op = "a @= b"
         errored, other = self._operator_overload_prep(other, op)
         if errored:
-            self.add_Err_msg(other)
+            self.add_Err_msg(other, _levels=-4)
             return self
         try:
             self._val @= other
@@ -1699,10 +1705,10 @@ class Result:
             try:
                 return Result(abs(self._val))
             except Exception as e:
-                self.add_Err_msg("Result(abs(a)) resulted in an Exception")
+                self.add_Err_msg("Result(abs(a)) resulted in an Exception", _levels=-4)
                 self.add_Err_msg(f"{type(e).__name__}: {e}", False)
         else:
-            self.add_Err_msg("int(Result(a)) with a as Err")
+            self.add_Err_msg("Result(abs(a)) with a as Err", _levels=-4)
         return self
 
     def __neg__(self):  # negation, -a
@@ -1710,10 +1716,10 @@ class Result:
             try:
                 return Result(-self._val)
             except Exception as e:
-                self.add_Err_msg("Result(-a) resulted in an Exception")
+                self.add_Err_msg("Result(-a) resulted in an Exception", _levels=-4)
                 self.add_Err_msg(f"{type(e).__name__}: {e}", False)
         else:
-            self.add_Err_msg("int(Result(a)) with a as Err")
+            self.add_Err_msg("Result(-a) with a as Err")
         return self
 
     def __pos__(self):  # unary positive, +a
@@ -1721,10 +1727,10 @@ class Result:
             try:
                 return Result(+self._val)
             except Exception as e:
-                self.add_Err_msg("Result(+a) resulted in an Exception")
+                self.add_Err_msg("Result(+a) resulted in an Exception", _levels=-4)
                 self.add_Err_msg(f"{type(e).__name__}: {e}", False)
         else:
-            self.add_Err_msg("int(Result(a)) with a as Err")
+            self.add_Err_msg("Result(+a) with a as Err", _levels=-4)
         return self
 
     def __int__(self):  # To get called by built-in int() method to convert a type to an int.
@@ -1732,10 +1738,10 @@ class Result:
             try:
                 return Result(int(self._val))
             except Exception as e:
-                self.add_Err_msg("Result(int(a)) resulted in an Exception")
+                self.add_Err_msg("Result(int(a)) resulted in an Exception", _levels=-4)
                 self.add_Err_msg(f"{type(e).__name__}: {e}", False)
         else:
-            self.add_Err_msg("int(Result(a)) with a as Err")
+            self.add_Err_msg("int(Result(a)) with a as Err", _levels=-4)
         return self
 
     def __float__(self):  # To get called by built-in float() method to convert a type to float.
@@ -1743,10 +1749,10 @@ class Result:
             try:
                 return Result(float(self._val))
             except Exception as e:
-                self.add_Err_msg("Result(float(a)) resulted in an Exception")
+                self.add_Err_msg("Result(float(a)) resulted in an Exception", _levels=-4)
                 self.add_Err_msg(f"{type(e).__name__}: {e}", False)
         else:
-            self.add_Err_msg("float(Result(a)) with a as Err")
+            self.add_Err_msg("float(Result(a)) with a as Err", _levels=-4)
         return self
 
     def __lt__(self, other):  # compare self < other.
@@ -1829,8 +1835,8 @@ class Err:
         >>> print(error.unwrap())         # Outputs: ResultErr("Error message")
     """
 
-    def __new__(self, error_msg, add_traceback=True):
-        return Result(EMPTY_ERROR_MSG, False, error_msg, add_traceback, _levels=-4)
+    def __new__(self, error_msg, add_traceback=True, *, _levels=-5):
+        return Result(EMPTY_ERROR_MSG, False, error_msg, add_traceback, _levels=_levels)
 
 
 # %% -----------------------------------------------------------------------------------------------
