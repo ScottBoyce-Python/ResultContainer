@@ -860,8 +860,9 @@ class Result:
         _levels=-3,
     ):
         if isinstance(value, Result):
-            success = value._success
-            value = value._val
+            self._success = value._success
+            self._val = value._val
+            return
 
         if isinstance(value, ResultErr):
             self._success = False
@@ -873,20 +874,16 @@ class Result:
                 f"Result must have success as bool, but received success={success}, which is type {type(success)}"
             )
 
-        self._success = success
+        self._success = True  # is converted to False if Err
 
         if _empty_init or success is None:
+            self._success = None
             self._val = None
         elif success:
             self._val = _deepcopy(value) if deepcopy else value
         else:
-            if error_msg == "" and value == "":
-                error_msg = EMPTY_ERROR_MSG
-            self._val = (
-                ResultErr(error_msg, add_traceback, _levels=_levels)
-                if error_msg != ""
-                else ResultErr(str(value), add_traceback, _levels=_levels)
-            )
+            self._val = "" if error_msg != "" else value
+            self.add_Err_msg(error_msg, add_traceback, _levels=_levels)
 
     @classmethod
     def as_Ok(cls, value, deepcopy: bool = False):
