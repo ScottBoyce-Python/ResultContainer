@@ -1149,9 +1149,7 @@ class Result:
         return False
 
     def __hash__(self) -> int:
-        if self._success:
-            return hash(self._val)  # Hash the value stored in ok
-        return hash(self.str())
+        return hash(self.str())  # hash the string representation of Result
 
     def __enter__(self):  # Called when entering a with block.
         if not self._success:
