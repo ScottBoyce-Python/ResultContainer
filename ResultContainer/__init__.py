@@ -371,17 +371,17 @@ class ResultErr(Exception):
         else:
             tb = []
 
-        if not isinstance(msg, str) and isinstance(msg, (Sequence, Iterable)):
-            dim = len(self.msg)
-            self.msg += list(map(str.strip, map(str, msg)))
-            dim = len(self.msg) - dim
-            self.traceback_info += [tb]
-            self.traceback_info += [[] for i in range(dim - 1)]
-            # self.traceback_info.extend([tb] * dim
-        else:
-            msg = str(msg).strip()
-            self.msg.append(msg)
-            self.traceback_info.append(tb)
+        # if not isinstance(msg, str) and isinstance(msg, Sequence):
+        #     dim = len(self.msg)
+        #     self.msg += list(map(str.strip, map(str, msg)))
+        #     dim = len(self.msg) - dim
+        #     self.traceback_info += [tb]
+        #     self.traceback_info += [[] for i in range(dim - 1)]
+        #     # self.traceback_info.extend([tb] * dim
+        # else:
+        msg = str(msg).strip()
+        self.msg.append(msg)
+        self.traceback_info.append(tb)
 
         self._check_max_messages()
 
@@ -488,7 +488,7 @@ class ResultErr(Exception):
         for msg in self.msg:
             if sub_msg in msg:
                 return True
-        return False
+        return Falsegw
 
     def str(self, sep: str = " | ", as_repr: bool = True, add_traceback: bool = False) -> str:
         """Return a string representation of the error messages.
