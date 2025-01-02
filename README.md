@@ -3,12 +3,15 @@
 <p align="left">
   <img src="https://github.com/ScottBoyce-Python/ResultContainer/actions/workflows/ResultContainer-pytest.yml/badge.svg" alt="Build Status" height="20">
 </p>
+## About
 
+ResultContainer is a Python library inspired by [Rust’s Result](https://doc.rust-lang.org/std/result/enum.Result.html) enum, designed for robust error handling. It seamlessly supports mathematical operations, attribute access, and method chaining on `Ok(value)`, while automatically transitioning to `Err(e)` upon encountering errors, ensuring continuous error tracking and logging. Ideal for developers seeking structured and functional error management in Python.
 
+## Description
 
-The `ResultContainer` module simplifies complex error handling into clean, readable, and maintainable code structures. Error handling in Python can often become unwieldy, with deeply nested `try/except` blocks and scattered error management. The `ResultContainer` is used for situations when errors are expected and are easily handled. Inspired by [Rust’s Result<Ok, Err>](https://doc.rust-lang.org/std/result/enum.Result.html) enum, `ResultContainer` introduces a clean and Pythonic way to encapsulate success (`Ok`) and failure (`Err`) outcomes.
+The `ResultContainer` module simplifies complex error handling into clean, readable, and maintainable code structures. Error handling in Python can often become unwieldy, with deeply nested `try/except` blocks and scattered error management. The `ResultContainer` is used for situations when errors are expected and are easily handled. Inspired by Rust's Result<Ok, Err> enum, `ResultContainer` introduces a clean and Pythonic way to encapsulate a `Result` as a success (`Ok`) and failure (`Err`) outcomes.
 
-The `ResultContainer.Result` enum wraps a value in an `Ok` variant, until there is an exception or error raised, and then it is converted to the `Err` variant. The `Err` variant wraps a `ResultContainer.ResultErr` exception object that contains the error messages and traceback information. The `Result` object includes similar methods to the Rust Result Enum for inquiry about the state, mapping functions, and passing attributes/methods to the containing `value`. 
+The `ResultContainer` module contains two classes, `ResultErr` and `Result`. The `ResultContainer.ResultErr` class extends the Exception class to collect and store error messages and traceback information. The `ResultContainer.Result` is the enum with two variants:  `ResultContainer.Result.Ok(value)` and  `ResultContainer.Result.Err(e)`. The `Ok(value)` variant wraps any `value` as long as no exceptions occur. The  `Ok` variant cannot directly wrap another Result or ResultErr objects. However,  `Ok` can wrap another object, such as a list, that contains Result and ResultErr objects.  Methods and attributes that are not part of the Result class are automatically passed to the wrapped `value`.  For example, `Ok(value).method()` becomes `Ok(value.method())`. If an `Ok` variant operation results in raising an exception, the exception and traceback info is stored in a `ResultErr` object (`e`) and the `Ok` is converted to the `Err(e)` variant. Subsequent errors are appended to `e`. `Result` contains status inquiry methods, unwrap methods to get the stored `value` or `e`, and the ability to raise a `ResultErr` exception for the `Err(e)` variant.
 
 The `ResultContainer` is designed to streamline error propagation and improve code readability, `ResultContainer` is ideal for developers seeking a robust, maintainable approach to handling errors in data pipelines, API integrations, or asynchronous operations.
 
@@ -31,21 +34,25 @@ git clone https://github.com/ScottBoyce-Python/ResultContainer.git
 ```
 then rename the file `ResultContainer/__init__.py` to  `ResultContainer/ResultContainer.py` and move `ResultContainer.py` to wherever you want to use it.
 
+  
+
 ## Variants
 
 ```python
 # Result is the main class and Ok and Err are constructors.
-from ResultContainer import Result, Ok, Err
+from ResultContainer import Result, Ok, Err, ResultErr
 ```
 
 - `Ok(value)`
-  - `value` is wrapped within an `Ok`.  
+  - `value` is any object to be wrapped within an `Ok`.  
   - Constructor: `Result.as_Ok(value)`
   - `Result.Ok` attribute returns the wrapped `value`
   - Can never wrap a `ResultErr` instance (it will just be converted to an `Err(value)`). 
   
 - `Err(e)`
-  - `e` is wrapped within an `Err`, and `type(e) is ResultErr`. 
+  - `e` is any object to be wrapped within an `Err`. 
+    - `e` is stored as `ResultErr` Exception object.
+    -  If  `not isinstance(e, ResultErr)`,  then `e = ResultErr(e)`. 
   - Constructor: `Result.as_Err(error_msg)`
   - `Result.Err` attribute returns the wrapped `e`.
 
@@ -53,9 +60,13 @@ from ResultContainer import Result, Ok, Err
 
 #### `Err(e)`:
 
-- Represents a failure (error-state) and contains `e` as a `ResultErr` object  that stores error messages and traceback information.
+- Represents a failure (error-state).
+  -  `e` is a `ResultErr` object that stores error messages and traceback information.
 
-- Can be initialized with `Err(error_msg)`
+  - If `e` is another type, it is converted to a `ResultErr`.  
+    That is, given `Err(e)` and `not isinstance(e, ResultErr)` becomes `Err( ResultErr(e) )`. 
+
+- Can be initialized with `Err(error_msg)`, where `error_msg` can be any object (typically a str)
   - `Err(e)` &nbsp; ➥&nbsp; syntactic-sugar for &nbsp; ➥&nbsp;  `Result.as_Err(e)`
 
 - If an `Ok(value)` operation fails, then it is converted to an `Err(e)`, where `e` stores the error message.
@@ -94,14 +105,79 @@ from ResultContainer import Result, Ok, Err
   - `Err(e1)    <  Err(e2)    ` ➣ `False`
   - `Err(e1)    <= Err(e2)    ` ➣ `True`
 
-## Initialization
+  
+
+## ResultErr Class
+
+The `ResultErr` class is a custom exception class for error handling in the `Result` object. The `ResultErr` class captures error messages and optional traceback information. Its primary use is for identifying when a `Result` instance is an `Err` variant, which is handled automatically. It should not be necessary to use the ResultErr class directly, but select attributes and methods are presented here for background information.
+
+### Initialization
+
+```python
+# All arguments are optional
+from ResultContainer import ResultErr
+
+# Main object signature:
+e = ResultErr(msg="", add_traceback=True, max_messages=20)
+#  msg            (Any, optional): Error message(s) to initialize with.
+#                                  `str(msg)` is the message that is stored.
+#                                  If msg is a Sequence, then each item in the Sequence is
+#                                  appended as str(item) to the error messages.
+#                                  Default is "", to disable error status.
+#  add_traceback (bool, optional): If True, then traceback information is added to the message.
+#  max_messages   (int, optional): The maximum number of error messages to store.
+#                                  After this, all additional messages are ignored. Default is 20.
+```
+
+### Attributes and Methods
+
+These are select attributes and methods built into `Result` object. 
+
+#### Attributes
+
+```    
+size          (int): Returns the number of error messages.
+
+is_Ok        (bool): Returns False if in error status (ie, size == 0).
+is_Err       (bool): Returns True  if in error status (ie, size >  0).
+
+Err_msg             (list[str]): List of the error messages that have been added.
+Err_traceback (list[list[str]]): List of lists that contains the traceback information for each error message.
+```
+
+#### Methods
+
+``` 
+append(msg, add_traceback=True):
+   Append an error message to the instance.
+   
+raises(add_traceback=False, error_msg=""):
+    Raise a ResultErr exception if `size > 0`.
+    `error_msg` is an optional note to append to the ResultErr.
+    If not exception is raised, then returns itself.
+
+str(sep=" | ", as_repr=True, add_traceback=False):
+    Returns a string representation of the error messages and traceback information.
+    If as_repr is True error messages are be printed inline (repr version),
+    while False writes out traceback and error messages over multiple lines (str version).
+    For general use, it is recomended to use the default values.
+
+copy():
+    Return a copy of the current ResultErr object.
+```
+
+  
+
+## Result Class
+
+### Initialization
 
 ```python
 # Only the first argument is required for all constructors
 from ResultContainer import Result, Ok, Err
 
 # Main object signature:
-res = Result(value, success, error_msg, add_traceback, deepcopy)  # Construct either Ok or Er
+res = Result(value, success, error_msg, add_traceback, deepcopy)  # Construct either Ok or Err
 
 # Classmethod signatures:
 res = Result.as_Ok(value, deepcopy)                               # Construct Ok  variant
@@ -129,11 +205,11 @@ res = Err(error_msg, add_traceback)                               # Construct Er
 #
 ```
 
-## Attributes and Methods
+### Attributes and Methods
 
 These are select attributes and methods built into `Result` object. For a full listing please see the Result docstr.
 
-### Attributes
+#### Attributes
 
 ```    
 is_Ok   (bool): True if the result is a  success.
@@ -156,7 +232,7 @@ Err_traceback (list[list[str]]):
     For the Err(e)    variant, returns list of traceback lines.
 ```
 
-### Methods
+#### Methods
 
 ``` 
 raises(add_traceback=False, error_msg=""):
@@ -201,7 +277,7 @@ apply_map(ok_func, unwrap=False):
 
 map(ok_func):
 map_or(default, ok_func):
-	Same functionality as apply and apply_or, 
+    Same functionality as apply and apply_or, 
     except that if the function call fails, raises an exception.
                                        
 iter(unwrap=True, expand=False):
@@ -239,14 +315,40 @@ copy(deepcopy=False):
     
 ```
 
-
-
+  
 
 ## Usage
 
 Below are examples showcasing how to create and interact with a `ResultContainer`.
 
-### Creating a Result
+### ResultErr Initialization
+
+```python
+from ResultContainer import ResultErr
+
+# Initialize ResultErr instances
+a = ResultErr("Error Message")
+b = ResultErr(5)
+c = ResultErr(["Error Message 1", "Error Message 2"])
+
+print(a.str())  # ResultErr("Error Message")
+print(b.str())  # ResultErr("5")
+print(c.str())  # ResultErr("Error Message 1 | Error Message 2")
+
+raise c         # Raises the following exception:
+
+# Traceback (most recent call last):
+#   File "example.py", line 12, in <module>
+#     raise c
+# ResultContainer.ResultErr: 
+#   File "example.py", line 6, in <module> 
+#     c = ResultErr(["Error Message 1", "Error Message 2"])
+# 
+#    <Error Message 1>
+#    <Error Message 2>
+```
+
+### Result Initialization
 
 ```python
 from ResultContainer import Result, Ok, Err, ResultErr
@@ -272,12 +374,14 @@ a = Err(5)
 # A ResultErr instance is always wrapped by Err ---------------------------------------------------------
 e = ResultErr("Error Message")   # e is an instance of ResultErr
 
-a1 = Result(e, success=True)     # a1 == a2 == a3 == Err(e)
-a2 = Result.as_Ok(5)
+a1 = Result(e, success=True)     # a1 == a2 == a3 == Err(e); success is ignored because isinstance(e, ResultErr)
+a2 = Result.as_Ok(e)
 a3 = Ok(e)
 ```
 
-### Math Operations with a Result
+  
+
+### Math Operations
 
 ```python
 from ResultContainer import Ok
@@ -299,7 +403,9 @@ z = x + y         # z = Ok([1, 2, 3, 4, 5, 6, 7])
 
 ```
 
-### Wrapping Objects
+  
+
+### Wrapping `datetime Example
 
 ```python
 from ResultContainer import Result, Ok, Err
@@ -323,57 +429,7 @@ bad_dt = dt + timedelta(days=10000)        # bad_dt = Err("a + b resulted in an 
 bad_dt.raises()                            # raises a ResultErr exception
 ```
 
-### Raising Errors
-
-```python
-from ResultContainer import Result, Ok, Err
-
-# raises() is a powerful check when chaining methods. 
-# It raises an exception if Err, otherwise returns the original Ok(value) 
-x = Result(10)   # x = Ok(10)
-y = x.raises()   # y = Ok(10)
-x /= 0           # x = Err("a /= b resulted in an Exception. | ZeroDivisionError: division by zero")
-
-y = x.raises()  # Raises the following exception:
-
-# Traceback (most recent call last):
-#   File "example.py", line 7, in <module>
-#     x.raises()  
-#     ^^^^^^^^^^
-#   File "ResultContainer/ResultContainer.py", line 957, in raises
-#     raise self._Err
-# ResultErr: 
-#   [1] a /= b resulted in an Exception.
-#  [12] ZeroDivisionError: division by zero
-```
-
   
-
-
-```python
-1 | from ResultContainer import Result, Ok, Err
-2 | from datetime import datetime, timedelta
-3 | 
-4 | dt = Result(datetime(9999, 12, 31))
-5 | 
-6 | bad_dt = dt + timedelta(days=10000)
-7 | 
-8 | bad_dt.raises()  
-# Raises the following exception.
-#    Note the exception says it occured on `line 6` despite being called on `line 8`
-
-# Traceback (most recent call last):
-#   File "example.py", line 8, in <module>
-#     bad_dt.raises()
-#   File "ResultContainer/ResultContainer.py", line 957, in raises
-#     raise self._Err
-# ResultErr: 
-#   File "ResultContainer/example.py", line 6, in <module>
-#     bad_dt = dt + timedelta(days=10000)
-#
-#   [1] a + b resulted in an Exception.
-#  [12] OverflowError: date value out of range
-```
 
 ### Passing Functions and Chaining Operations
 
@@ -397,7 +453,67 @@ d = (a / 0).map_or(10, plus1).map_or(20, plus1).map_or(30, plus1) # d = Err() ->
 
 ```
 
+  
 
+### Raising Errors
+
+```python
+from ResultContainer import Result, Ok, Err
+
+# raises() is a powerful check when chaining methods. 
+# It raises an exception if Err, otherwise returns the original Ok(value) 
+x = Result(10)   # x = Ok(10)
+y = x.raises()   # y = Ok(10)
+x /= 0           # x = Err("a /= b resulted in an Exception. | ZeroDivisionError: division by zero")
+
+y = x.raises()  # Raises the following exception:
+
+# Traceback (most recent call last):
+#   File "example.py", line 9, in <module>
+#     y = x.raises()  # Raises the following exception:
+#         ^^^^^^^^^^
+#   File "ResultContainer\__init__.py", line 882, in raises       
+#     raise self._val  # Result.Err variant raises an exception
+#     ^^^^^^^^^^^^^^^
+# ResultContainer.ResultErr: 
+#   File "example.py", line 7, in <module>
+#     x /= 0           # x = Err("a /= b resulted in an Exception. | ZeroDivisionError: division by zero")
+#   File "ResultContainer\__init__.py", line 1313, in __itruediv__
+#     return self._operator_overload_error(e, op, True)
+# 
+#    <a /= b resulted in an Exception.>
+#    <ZeroDivisionError: division by zero>
+#    <Result.raises() on Err>
+```
+
+  
+
+```python
+from ResultContainer import Result, Ok, Err
+from datetime import datetime, timedelta
+
+dt = Result(datetime(9999, 12, 31))
+
+bad_dt = dt + timedelta(days=10000)
+
+bad_dt.raises()    # Raises the following exception:
+# Traceback (most recent call last):
+#   File "example.py", line 8, in <module>
+#     bad_dt.raises()  
+#     ^^^^^^^^^^^^^^^
+#   File "ResultContainer\__init__.py", line 882, in raises
+#     raise self._val  # Result.Err variant raises an exception
+#     ^^^^^^^^^^^^^^^
+# ResultContainer.ResultErr: 
+#   File "example.py", line 6, in <module>
+#     bad_dt = dt + timedelta(days=10000)
+# 
+#    <a + b resulted in an Exception.>
+#    <OverflowError: date value out of range>
+#    <Result.raises() on Err>
+```
+
+  
 
 ## Testing
 
@@ -413,7 +529,7 @@ pytest  # run all tests, note options are set in the pyproject.toml file
 
 Note, that the [pyproject.toml](pyproject.toml) contains the flags used for pytest.
 
-
+  
 
 ## License
 

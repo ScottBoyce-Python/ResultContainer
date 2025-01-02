@@ -200,12 +200,15 @@ class ResultErr(Exception):
     error = ResultErr(msg, add_traceback, max_messages)
 
     Args:
-        msg  (str, optional):             Error message(s) to initialize with.
-                                          Default is "", to disable error status.
-        add_traceback (bool, optional):   If True, then traceback information is added to the message.
-        max_messages (int, optional):     The maximum number of error messages to store.
-                                          After this, all additional messages are ignored.
-                                          Default is 20.
+        msg  (Any, optional):           Error message(s) to initialize with.
+                                        `str(msg)` is the message that is stored.
+                                        If msg is a Sequence, then each item in the Sequence is
+                                        appended as str(item) to the error messages.
+                                        Default is "", to disable error status.
+        add_traceback (bool, optional): If True, then traceback information is added to the message.
+        max_messages (int, optional):   The maximum number of error messages to store.
+                                        After this, all additional messages are ignored.
+                                        Default is 20.
 
 
     Attributes:
@@ -217,20 +220,26 @@ class ResultErr(Exception):
 
 
     Methods:
-        raises(note=""):
-            Raise a ResultErr exception if error messages exist
-            and optionally add the note to the end of exception.
+        raises(add_traceback=False, error_msg=""):
+            Raise a ResultErr exception if `size > 0`.
+            `error_msg` is an optional note to append to the ResultErr.
+            If not exception is raised, then returns itself.
+
+        str(sep=" | ", as_repr=True, add_traceback=False):
+            Returns a string representation of the error messages and traceback information.
+            If as_repr is True error messages are be printed inline (repr version),
+            while False writes out traceback and error messages over multiple lines (str version).
 
         expect(error_msg=""):
-            Raise a ResultErr exception if error messages exist
-            and optionally add the note to the end of exception.
-            Returns an empty ResultErr.
+            Raise a ResultErr exception if `size > 0`.
+            `error_msg` is an optional note to append to the ResultErr.
+            If not exception is raised, then returns [].
 
-        unwrap(*args, **kwargs):
+        unwrap():
             Returns the list of error messages stored.
 
         append(msg, add_traceback=True):
-            Append a new error message and traceback information.
+            Append an error message to the instance.
 
         copy():
             Return a copy of the current ResultErr object.
@@ -286,11 +295,15 @@ class ResultErr(Exception):
         it is considered in `error state`.
 
         Args:
-            msg  (str, list, or ResultErr, optional): Error message(s) to store.
-            add_traceback (bool, optional):   If True, then traceback information is added to the message.
-            max_messages (int, optional):     The maximum number of error messages to store.
-                                              After this, all additional messages are ignored.
-                                              Default is 20.
+            msg  (Any, optional):           Error message(s) to initialize with.
+                                            `str(msg)` is the message that is stored.
+                                            If msg is a Sequence, then each item in the Sequence is
+                                            appended as str(item) to the error messages.
+                                            Default is "", to disable error status.
+            add_traceback (bool, optional): If True, then traceback information is added to the message.
+            max_messages (int, optional):   The maximum number of error messages to store.
+                                            After this, all additional messages are ignored.
+                                            Default is 20.
         """
         super().__init__()
         self.max_messages = max_messages if max_messages > 1 else 1
@@ -324,7 +337,8 @@ class ResultErr(Exception):
             dim = len(self.msg)
             self.msg += list(map(str.strip, map(str, msg)))
             dim = len(self.msg) - dim
-            self.traceback_info += [tb] * dim
+            self.traceback_info += [tb]
+            self.traceback_info += [[] for i in range(dim - 1)]
             # self.traceback_info.extend([tb] * dim
         else:
             msg = str(msg).strip()
@@ -373,10 +387,11 @@ class ResultErr(Exception):
             elif add_traceback:
                 self.append("ResultErr.raises Exception")
             raise self
+        return self
 
     def expect(self, error_msg=""):
         self.raises(True, error_msg)
-        return self
+        return self.msg
 
     def unwrap(self):
         """Returns the list of error messages stored."""
@@ -388,6 +403,7 @@ class ResultErr(Exception):
 
         Args:
             msg  (str, list, or ResultErr, optional): Error message(s) to append.
+            add_traceback                     (bool): Optional, add traceback info.
         """
         if len(self.msg) < self.max_messages:
             self._process_error_messages(msg, add_traceback, _levels=_levels)
@@ -438,23 +454,29 @@ class ResultErr(Exception):
 
         if add_traceback:  # ignores sep
             if self.size == 1:
-                s = ("".join(self.traceback_info[0]) + f"\n   {self.msg[0]}").strip()
-                return f"ResultErr(\n{s}\n)" if as_repr else f"\n{s}\n"
+                s = ("".join(self.traceback_info[0]) + f"\n   <{self.msg[0]}>").strip()
+                return f"ResultErr(\n  {s}\n)" if as_repr else f"\n  {s}\n"
             else:
-                s = "".join(["".join(tb) + f"\n   {m}" for m, tb in zip(self.msg, self.traceback_info)])
-                if len(self.traceback_info[0]) > 0:
-                    s = "\n" + s
-                return f"ResultErr({s}\n)" if as_repr else s
+                s = ""
+                tb_old = []
+                for m, tb in zip(self.msg, self.traceback_info):
+                    if len(tb) > 0:
+                        s += "\n\n" if len(tb_old) > 0 else "\n"
+                        s += "".join(tb)
+                    s += f"\n   <{m}>"
+                    tb_old = tb
+
+                return f"ResultErr({s}\n)" if as_repr else f"{s}\n"
 
         if self.size == 1:
             s = f"{self.msg[0]}".strip()
-            return f"ResultErr({s})" if as_repr else s
+            return f'ResultErr("{s}")' if as_repr else s
 
         if sep == "\n" and self.size > 1:
             s = "\n".join(f"   {m}" for m in self.msg)
-            return f"ResultErr({s}\n)" if as_repr else s.strip()
+            return f"ResultErr({s}\n)" if as_repr else s.rstrip()
         s = sep.join(f"{m}" for m in self.msg).strip()
-        return f"ResultErr({s})" if as_repr else s
+        return f'ResultErr("{s}")' if as_repr else s
 
     def __str__(self):
         if self.size < 1:
@@ -464,7 +486,7 @@ class ResultErr(Exception):
     def __repr__(self):
         if self.size == 0:
             return "ResultErr()"
-        return f'ResultErr("{self.str().strip()}")'
+        return self.str().strip()  # f'ResultErr("{self.str().strip()}")'
 
     def __hash__(self) -> int:
         return hash(self.str())
@@ -538,9 +560,9 @@ class Result:
 
     However, error states will propagate and add messages, such as
     Err(5)     -> Err("5") and
-    Err(5) + 1 -> Err("5 | a += b with a as Err.")
+    Err(5) + 1 -> Err("5 | a += b with a as Err")
     x = Err(5)
-    x += 1     -> x == Err("5 | a += b with a as Err.")
+    x += 1     -> x == Err("5 | a += b with a as Err")
 
     The Ok(value) variant supports attributes and methods associated with value.
     That is, `Ok(value).attrib`   is equivalent to `Ok(value.attrib)`
@@ -726,7 +748,7 @@ class Result:
         >>> print(x / 0)                   # Outputs: Err("a /= b resulted in an Exception. | ZeroDivisionError: division by zero")
         >>> print(x.apply(lambda a: a**2)) # Outputs: Ok(25)
         >>> z = x / 0
-        >>> print(z.apply(lambda a: a**2)) # Outputs: Err("a /= b resulted in an Exception. | ZeroDivisionError: division by zero | Result.apply applied in Error State.")
+        >>> print(z.apply(lambda a: a**2)) # Outputs: Err("a /= b resulted in an Exception. | ZeroDivisionError: division by zero | Result.apply applied in Error State")
 
     """
 
@@ -867,11 +889,11 @@ class Result:
             try:
                 return Result(ok_func(self._val, *args, **kwargs))
             except Exception as e:
-                err = Result.as_Err("Result.apply exception.")
+                err = Result.as_Err("Result.apply exception")
                 err.add_Err_msg(f"{type(e).__name__}: {e}", False)
         else:
             err = Result(self._val)
-            err.add_Err_msg("Result.apply on Err.")
+            err.add_Err_msg("Result.apply on Err")
         return err
 
     def apply_or(self, default, ok_func, *args, **kwargs):
@@ -891,7 +913,7 @@ class Result:
                     return Result(err_func(self._val, *args, **kwargs))
                 except Exception:
                     err = ResultErr(
-                        "Result.apply_or_else err_func(value) and ok_func(value) raised an exception.",
+                        "Result.apply_or_else err_func(value) and ok_func(value) raised an exception",
                         False,
                     )
         else:
@@ -900,7 +922,7 @@ class Result:
             return Result(err_func(err, *args, **kwargs))
         except Exception as e:
             err = Result.as_Err(
-                "Result.apply_or_else ok_func(value), err_func(value), and err_func(error) raised exceptions.",
+                "Result.apply_or_else ok_func(value), err_func(value), and err_func(error) raised exceptions",
             )
             err.add_Err_msg(f"{type(e).__name__}: {e}", False)
             return err
@@ -912,7 +934,7 @@ class Result:
             return Result(err_func(self._val, *args, **kwargs))
         except Exception as e:
             err = self.copy()
-            err.add_Err_msg("Result.apply_err exception.")
+            err.add_Err_msg("Result.apply_err exception")
             err.add_Err_msg(f"{type(e).__name__}: {e}", False)
             return err
 
@@ -925,18 +947,18 @@ class Result:
                     return Result(list(map(ok_func, self._val)))
                 return Result([ok_func(self._val)])
             except Exception as e:
-                err = Result.as_Err("Result.apply_map exception.")
+                err = Result.as_Err("Result.apply_map exception")
                 err.add_Err_msg(f"{type(e).__name__}: {e}", False)
         else:
             err = Result(self._val)
-            err.add_Err_msg("Result.apply_map on Err.")
+            err.add_Err_msg("Result.apply_map on Err")
         return err
 
     def map(self, ok_func):
         if self._success:
             return Result(ok_func(self._val))
         res = Result(self._val)
-        res.add_Err_msg("Result.map on Err.")
+        res.add_Err_msg("Result.map on Err")
         return res
 
     def map_or(self, default, ok_func):
@@ -1022,27 +1044,27 @@ class Result:
         if isinstance(b, Result):
             if not self._success and not b._success:
                 err = Result(self)
-                err.add_Err_msg(f"{operation} with a and b as Err.")
+                err.add_Err_msg(f"{operation} with a and b as Err")
                 return True, err
             if not b._success:
                 err = Result(b)
-                err.add_Err_msg(f"{operation} with b as Err.")
+                err.add_Err_msg(f"{operation} with b as Err")
                 return True, err
             if self._success:
                 return False, b._val  # no error
 
         if not self._success:
             err = Result(self)
-            err.add_Err_msg(f"{operation} with a as Err.")
+            err.add_Err_msg(f"{operation} with a as Err")
             return True, err
         return False, b  # no error
 
     def _operator_overload_error(self, e, operation: str, apply_to_self: bool):
         if apply_to_self:
-            self.add_Err_msg(f"{operation} resulted in an Exception.")
+            self.add_Err_msg(f"{operation} resulted in an Exception")
             self.add_Err_msg(f"{type(e).__name__}: {e}", False)
             return self
-        err = Result(EMPTY_ERROR_MSG, False, f"{operation} resulted in an Exception.", _levels=-5)
+        err = Result(EMPTY_ERROR_MSG, False, f"{operation} resulted in an Exception", _levels=-5)
         err.add_Err_msg(f"{type(e).__name__}: {e}", False)
         return err
 
@@ -1079,7 +1101,7 @@ class Result:
             # tb = traceback.format_tb(tb)
             # tb = [line for line in tb if not any(exclude in line for exclude in TRACEBACK_EXCLUDE_FILES)]
             # tb.pop()
-            self.add_Err_msg(f"with block {exc_type} Exception.", False)
+            self.add_Err_msg(f"with block {exc_type} Exception", False)
             # self._val.traceback_info.pop()
             # self._val.traceback_info.append(tb)
             raise self._val from exc_value
@@ -1156,7 +1178,7 @@ class Result:
     def __getitem__(self, key):  # index return, a[index]
         if not self._success:
             err = Result(self)
-            err.add_Err_msg(f"Err()[{key}] is not subscriptable.")
+            err.add_Err_msg(f"Err()[{key}] is not subscriptable")
             return err
         try:
             return Result(self._val[key])
@@ -1174,7 +1196,7 @@ class Result:
             except Exception as e:
                 self.add_Err_msg(f"Ok()[{key}]=value raises {e}")
         else:
-            self.add_Err_msg(f"Err()[{key}] is not subscriptable.")
+            self.add_Err_msg(f"Err()[{key}] is not subscriptable")
 
     def __iter__(self):
         return self.iter_wrap()
@@ -1549,10 +1571,10 @@ class Result:
             try:
                 return Result(abs(self._val))
             except Exception as e:
-                self.add_Err_msg("Result(abs(a)) resulted in an Exception.")
+                self.add_Err_msg("Result(abs(a)) resulted in an Exception")
                 self.add_Err_msg(f"{type(e).__name__}: {e}", False)
         else:
-            self.add_Err_msg("int(Result(a)) with a as Err.")
+            self.add_Err_msg("int(Result(a)) with a as Err")
         return self
 
     def __neg__(self):  # negation, -a
@@ -1560,10 +1582,10 @@ class Result:
             try:
                 return Result(-self._val)
             except Exception as e:
-                self.add_Err_msg("Result(-a) resulted in an Exception.")
+                self.add_Err_msg("Result(-a) resulted in an Exception")
                 self.add_Err_msg(f"{type(e).__name__}: {e}", False)
         else:
-            self.add_Err_msg("int(Result(a)) with a as Err.")
+            self.add_Err_msg("int(Result(a)) with a as Err")
         return self
 
     def __pos__(self):  # unary positive, +a
@@ -1571,10 +1593,10 @@ class Result:
             try:
                 return Result(+self._val)
             except Exception as e:
-                self.add_Err_msg("Result(+a) resulted in an Exception.")
+                self.add_Err_msg("Result(+a) resulted in an Exception")
                 self.add_Err_msg(f"{type(e).__name__}: {e}", False)
         else:
-            self.add_Err_msg("int(Result(a)) with a as Err.")
+            self.add_Err_msg("int(Result(a)) with a as Err")
         return self
 
     def __int__(self):  # To get called by built-in int() method to convert a type to an int.
@@ -1582,10 +1604,10 @@ class Result:
             try:
                 return Result(int(self._val))
             except Exception as e:
-                self.add_Err_msg("Result(int(a)) resulted in an Exception.")
+                self.add_Err_msg("Result(int(a)) resulted in an Exception")
                 self.add_Err_msg(f"{type(e).__name__}: {e}", False)
         else:
-            self.add_Err_msg("int(Result(a)) with a as Err.")
+            self.add_Err_msg("int(Result(a)) with a as Err")
         return self
 
     def __float__(self):  # To get called by built-in float() method to convert a type to float.
@@ -1593,10 +1615,10 @@ class Result:
             try:
                 return Result(float(self._val))
             except Exception as e:
-                self.add_Err_msg("Result(float(a)) resulted in an Exception.")
+                self.add_Err_msg("Result(float(a)) resulted in an Exception")
                 self.add_Err_msg(f"{type(e).__name__}: {e}", False)
         else:
-            self.add_Err_msg("float(Result(a)) with a as Err.")
+            self.add_Err_msg("float(Result(a)) with a as Err")
         return self
 
     def __lt__(self, other):  # compare self < other.
@@ -1700,7 +1722,6 @@ if __name__ == "__main__":
 
     print("Success Result:", success_result)
     print("Error Result:", error_result.unwrap())
-    error_result.expect()
 
     try:
         value = success_result.expect()
@@ -1721,7 +1742,6 @@ if __name__ == "__main__":
 
     err = Err("bad input")
 
-    assert err + 5 == ["bad input", "a + b with a as Err."]
-    assert err + 5 == Err(["bad input", "a + b with a as Err."])
+    assert err + 5 == Err(["bad input", "a + b with a as Err"])
 
     print("program completed successfully")

@@ -41,7 +41,7 @@ def test_ok_err_addition():
     result2 = Err("Error")
     result3 = result1 + result2
     assert result3.is_Err
-    assert "a + b with b as Err." in result3.unwrap().msg
+    assert "a + b with b as Err" in result3.unwrap().msg
 
 
 # Test for adding Err values
@@ -50,7 +50,7 @@ def test_err_addition():
     result2 = Err("Another Failure")
     result3 = result1 + result2
     assert result3.is_Err
-    assert "a + b with a and b as Err." in result3.unwrap().msg
+    assert "a + b with a and b as Err" in result3.unwrap().msg
 
 
 # Test for ResultErr initialization
@@ -176,25 +176,25 @@ def test_operator_addition_err():
     result2 = Err("Error")
     result3 = result1 + result2
     assert result3.is_Err
-    assert "b + a with a as Err." in result3.unwrap().msg
+    assert "b + a with a as Err" in result3.unwrap().msg
 
     result1 = Err("Error")
     result2 = 5
     result3 = result1 + result2
     assert result3.is_Err
-    assert "a + b with a as Err." in result3.unwrap().msg
+    assert "a + b with a as Err" in result3.unwrap().msg
 
     result1 = Ok(5)
     result2 = Err("Error")
     result3 = result1 + result2
     assert result3.is_Err
-    assert "a + b with b as Err." in result3.unwrap().msg
+    assert "a + b with b as Err" in result3.unwrap().msg
 
     result1 = Err("Error")
     result2 = Ok(5)
     result3 = result1 + result2
     assert result3.is_Err
-    assert "a + b with a as Err." in result3.unwrap().msg
+    assert "a + b with a as Err" in result3.unwrap().msg
 
 
 # Test for equality of Result objects
