@@ -466,7 +466,10 @@ class ResultErr(Exception):
         return ResultErr(self)
 
     def clear(self):
-        """Clear all stored error messages and reset the instance to non-error status."""
+        """
+        Clear the error message and traceback lists.
+        This resets the instance to non-error status.
+        """
         self.msg.clear()
         self.traceback_info.clear()
 
@@ -481,19 +484,26 @@ class ResultErr(Exception):
         """Check if a specific message exists in the error messages."""
         return msg in self.msg
 
-    def contains(self, sub_msg: str) -> bool:
+    def contains(self, sub_msg: str, ignore_case: bool = False) -> bool:
         """Check if any of the error messages contain the sub_msg.
 
         Args:
-            sub_msg (str): String to search for in the error messages.
+            sub_msg      (str): String to search for in the error messages.
+            ignore_case (bool): Set to true to ignore case in the matching.
 
         Returns:
             bool: True if sub_msg is found, otherwise False.
         """
-        for msg in self.msg:
-            if sub_msg in msg:
-                return True
-        return Falsegw
+        if ignore_case:
+            sub_msg = sub_msg.lower()
+            for msg in self.msg:
+                if sub_msg in msg.lower():
+                    return True
+        else:
+            for msg in self.msg:
+                if sub_msg in msg:
+                    return True
+        return False
 
     def str(self, sep: str = " | ", as_repr: bool = True, add_traceback: bool = False) -> str:
         """Return a string representation of the error messages.
@@ -776,7 +786,7 @@ class Result:
             unless type(item) is ResultErr, then returns Err(item).
             If expand is True, then returns `list(iter_wrap())`.
 
-        Err_msg_contains(sub_msg: str):
+        Err_msg_contains(sub_msg: str, ignore_case: bool=False):
             Returns true if Err(e) variant and sub_msg is contained in
             any of the error messages. The Ok variant returns False.
 
@@ -1041,7 +1051,7 @@ class Result:
                 err.add_Err_msg(f"{type(e).__name__}: {e}", False)
         else:
             err = Result(self._val)
-            err.add_Err_msg("Result.apply_map on Err")
+            err.add_Err_msg("Result.apply_map on Err", _levels=-4)
         return err
 
     def map(self, ok_func):
@@ -1089,18 +1099,19 @@ class Result:
             return self.iter_unwrap(expand)
         return self.iter_wrap(expand)
 
-    def Err_msg_contains(self, sub_msg: str) -> bool:
+    def Err_msg_contains(self, sub_msg: str, ignore_case: bool = False) -> bool:
         """
         Returns true if Err(e) variant and sub_msg is contained in any of
         the error messages. The Ok variant returns False.
 
         Args:
-            sub_msg (str): String to search for in the error messages.
+            sub_msg      (str): String to search for in the error messages.
+            ignore_case (bool): Set to true to ignore case in the matching.
 
         Returns:
             bool: True if sub_msg is found, otherwise False.
         """
-        return False if self._success else self._val.contains(sub_msg)
+        return False if self._success else self._val.contains(sub_msg, ignore_case)
 
     def add_Err_msg(self, error_msg, add_traceback: bool = True, *, _levels=-3):
         """Convert to error status and append error message."""
