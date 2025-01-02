@@ -392,11 +392,11 @@ class ResultErr(Exception):
     def expect(self, error_msg="") -> list:
         """Raise exception if in error state otherwise return []."""
         self.raises(True, error_msg)
-        return self.msg
+        return []
 
     def unwrap(self) -> list[str]:
         """Returns the list of error messages stored."""
-        return self.msg.copy()
+        return self.msg
 
     def append(self, msg, add_traceback: bool = True, *, _levels=-2):
         """
