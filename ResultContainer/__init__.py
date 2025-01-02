@@ -411,25 +411,30 @@ class ResultErr(Exception):
     def Err_traceback(self) -> list[list[str]]:
         return [] if self.is_Ok else self.traceback_info
 
-    def raises(self, add_traceback: bool = False, error_msg=""):
+    def raises(self, add_traceback: bool = False, error_msg="", _levels=-3):
         """
-        Raise a ResultErr exception if there are error messages.
+        Raise a ResultErr exception if `size > 0`.
 
         Args:
-            add_traceback (bool): Optional, add traceback info at raises call.
-            error_msg      (str): Optional note to append to the error.
+            add_traceback (bool, optional): If True, appends traceback to the error message.
+            error_msg      (Any, optional): Additional error note to append before raising.
+
+        Raises:
+            ResultErr: If the object is in an error state (`size > 0`).
         """
         if len(self.msg) > 0:
             if error_msg != "":
-                self.append(str(error_msg), add_traceback=add_traceback)
+                self.append(str(error_msg), add_traceback, _levels=_levels)
             elif add_traceback:
-                self.append("ResultErr.raises Exception")
-            raise self
+                self.append("ResultErr.raises() with ResultErr.size > 0", _levels=_levels)
+            raise self  # raises exception because ResultErr.size > 0
         return self
 
-    def expect(self, error_msg="") -> list:
+    def expect(self, error_msg="", *, _levels=-4) -> list:
         """Raise exception if in error state otherwise return []."""
-        self.raises(True, error_msg)
+        if error_msg == "":
+            error_msg = "ResultErr.expect() with ResultErr.size > 0"
+        self.raises(True, error_msg, _levels=_levels)
         return []
 
     def unwrap(self) -> list[str]:
@@ -438,11 +443,11 @@ class ResultErr(Exception):
 
     def append(self, msg, add_traceback: bool = True, *, _levels=-2):
         """
-        Append an error message to the instance.
+        Append an error message to the instance. If
 
         Args:
-            msg  (str, list, or ResultErr, optional): Error message(s) to append.
-            add_traceback                     (bool): Optional, add traceback info.
+            msg  (Any, optional): Error message to append.
+            add_traceback (bool): Optional, add traceback info.
         """
         if len(self.msg) < self.max_messages:
             self._process_error_messages(msg, add_traceback, _levels=_levels)
