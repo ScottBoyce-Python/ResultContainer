@@ -353,27 +353,27 @@ class ResultErr(Exception):
             self.traceback_info = self.traceback_info[: self.max_messages]
 
     @property
-    def size(self):
+    def size(self) -> int:
         """Return the number of stored error messages."""
         return len(self.msg)
 
     @property
-    def is_Ok(self):
+    def is_Ok(self) -> bool:
         return len(self.msg) == 0
 
     @property
-    def is_Err(self):
+    def is_Err(self) -> bool:
         return len(self.msg) > 0
 
     @property
-    def Err_msg(self):
+    def Err_msg(self) -> list[str]:
         return [] if self.is_Ok else self.msg
 
     @property
-    def Err_traceback(self):
+    def Err_traceback(self) -> list[list[str]]:
         return [] if self.is_Ok else self.traceback_info
 
-    def raises(self, add_traceback=False, error_msg=""):
+    def raises(self, add_traceback: bool = False, error_msg=""):
         """
         Raise a ResultErr exception if there are error messages.
 
@@ -389,15 +389,16 @@ class ResultErr(Exception):
             raise self
         return self
 
-    def expect(self, error_msg=""):
+    def expect(self, error_msg="") -> list:
+        """Raise exception if in error state otherwise return []."""
         self.raises(True, error_msg)
         return self.msg
 
-    def unwrap(self):
+    def unwrap(self) -> list[str]:
         """Returns the list of error messages stored."""
         return self.msg.copy()
 
-    def append(self, msg, add_traceback=True, *, _levels=-2):
+    def append(self, msg, add_traceback: bool = True, *, _levels=-2):
         """
         Append an error message to the instance.
 
@@ -408,7 +409,7 @@ class ResultErr(Exception):
         if len(self.msg) < self.max_messages:
             self._process_error_messages(msg, add_traceback, _levels=_levels)
 
-    def set_max_messages(self, max_messages):
+    def set_max_messages(self, max_messages: int):
         """Set the maximum number of error messages that are kept."""
         if max_messages < 1:
             self.max_messages = 1
@@ -426,7 +427,7 @@ class ResultErr(Exception):
         self.msg.clear()
         self.traceback_info.clear()
 
-    def pop(self):
+    def pop(self) -> (list[list[str]], list[str]):
         """Remove and return the last stored error message and its traceback info."""
         try:
             return self.msg.pop(), self.traceback_info.pop()
@@ -437,7 +438,7 @@ class ResultErr(Exception):
         """Check if a specific message exists in the error messages."""
         return msg in self.msg
 
-    def str(self, sep=" | ", as_repr=True, add_traceback=False):
+    def str(self, sep: str = " | ", as_repr: bool = True, add_traceback: bool = False) -> str:
         """Return a string representation of the error messages.
         Args:
             sep             (str): Separator used for concatenating error messages.
@@ -797,11 +798,11 @@ class Result:
             )
 
     @classmethod
-    def as_Ok(cls, value, deepcopy=False):
+    def as_Ok(cls, value, deepcopy: bool = False):
         return cls(value, deepcopy=deepcopy)
 
     @classmethod
-    def as_Err(cls, error_msg, add_traceback=True):
+    def as_Err(cls, error_msg, add_traceback: bool = True):
         return cls(EMPTY_ERROR_MSG, False, error_msg, add_traceback, _levels=-4)
 
     @classmethod
@@ -809,11 +810,11 @@ class Result:
         return cls(EMPTY_ERROR_MSG, _empty_init=True)
 
     @property
-    def is_Ok(self):
+    def is_Ok(self) -> bool:
         return self._success
 
     @property
-    def is_Err(self):
+    def is_Err(self) -> bool:
         return not self._success
 
     @property
@@ -833,7 +834,7 @@ class Result:
         return self._val
 
     @property
-    def Err(self):
+    def Err(self) -> ResultErr:
         """Attribute that is equivalent to Result.expect_Err()
 
         Returns:
@@ -846,11 +847,11 @@ class Result:
         return self._val
 
     @property
-    def Err_msg(self):
+    def Err_msg(self) -> list[str]:
         return [] if self._success else self._val.msg
 
     @property
-    def Err_traceback(self):
+    def Err_traceback(self) -> list[list[str]]:
         return [] if self._success else self._val.traceback_info
 
     def unwrap(self):
@@ -871,7 +872,7 @@ class Result:
         self.add_Err_msg("Result.expect_err for Ok variant")
         self.raises(False, ok_msg)
 
-    def raises(self, add_traceback=True, error_msg="", *, _levels=-5):
+    def raises(self, add_traceback: bool = True, error_msg="", *, _levels=-5):
         if self._success:
             return self
         if error_msg != "":
@@ -881,7 +882,7 @@ class Result:
             #
         raise self._val  # Result.Err variant raises an exception
 
-    def is_Ok_and(self, bool_ok_func, *args, **kwargs):
+    def is_Ok_and(self, bool_ok_func, *args, **kwargs) -> bool:
         return self._success and bool_ok_func(self._val, *args, **kwargs)
 
     def apply(self, ok_func, *args, **kwargs):
@@ -938,7 +939,7 @@ class Result:
             err.add_Err_msg(f"{type(e).__name__}: {e}", False)
             return err
 
-    def apply_map(self, ok_func, unwrap=False):
+    def apply_map(self, ok_func, unwrap: bool = False):
         if unwrap:
             return self.apply_map(ok_func).unwrap()
         if self._success:
@@ -985,7 +986,7 @@ class Result:
             return iter([self])
         return iter([])
 
-    def iter_unwrap(self, expand=False):
+    def iter_unwrap(self, expand: bool = False):
         if expand:
             return list(self.iter_unwrap())
         if self._success:
@@ -994,7 +995,7 @@ class Result:
             return iter([self._val])
         return iter([])
 
-    def iter(self, unwrap=True, expand=False):
+    def iter(self, unwrap: bool = True, expand: bool = False):
         if unwrap:
             return self.iter_unwrap(expand)
         return self.iter_wrap(expand)
@@ -1021,7 +1022,7 @@ class Result:
     def copy(self, deepcopy=True):
         return Result(self, deepcopy=deepcopy)
 
-    def str(self):
+    def str(self) -> str:
         if self._success is None:
             return "Result(Empty)"
         elif self._success:
