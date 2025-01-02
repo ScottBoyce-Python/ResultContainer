@@ -37,27 +37,54 @@ Constructors:
         Constructor for an error variant.  Syntactic sugar for: `Result.as_Err(error)`
 
 Example Usage:
-    >>> success = Result.as_Ok("Operation succeeded")
-    >>> error = Result.as_Err("Operation failed")
-    >>> print(success)
-    Ok("Operation succeeded")
+    >>> from ResultContainer import Result, Ok, Err
+    >>>
+    >>> result = Result.as_Ok("Success")
+    >>> print(result)
+    Ok("Success")
+    >>> x = result.unwrap()            # returns wrapped value so, x = "Success"
+    >>> print( result.expect() )       # Same as unwrap() for Ok variant
+    Success
+    >>>
+    >>> error = Result.as_Err("Failure")
     >>> print(error)
-    Err("Operation failed")
-    >>> print(success.unwrap())
-    Operation succeeded
-    >>> print(error.unwrap())
-    File "./ResultContainer/ResultContainer.py", line 6, in <module>
-        error = Result.as_Err("Operation failed")
-    [1] Operation failed
-    >>> error().expect()         # raises exception
+    Err("Failure")
+    >>> x = error.unwrap()             # returns wrapped value, which is e in Err(e), so, x = ResultErr("Failure")
+    >>> x = error.expect()             # For Err variant, raises exception
     Traceback (most recent call last):
-      File "<string>", line 1, in <module>
-      File "./ResultContainer/ResultContainer.py", line 943, in expect
-      raise self._val
-        ResultErr:
-        File "./ResultContainer/ResultContainer.py", line 6, in <module>
-            error_result = Err("Operation failed")
-     [1] Operation failed
+      File "example.py", line 10, in <module>
+        x = error.expect()             # For Err variant, raises exception
+            ^^^^^^^^^^^^^^
+      File "ResultContainer/__init__.py", line XYZ, in expect
+        self.raises(False, error_msg)
+      File "ResultContainer/__init__.py", line XYZ, in raises
+        raise self._val  # Err variant raises exception
+        ^^^^^^^^^^^^^^^
+    ResultContainer.ResultErr:
+      File "example.py", line  7, in <module>
+        error = Result.as_Err("Failure")
+
+       <Failure>
+
+      File "example.py", line 10, in <module>
+        x = error.expect()             # For Err variant, raises exception
+
+       <Result.expect for Err variant>
+       <Result.raises() on Err>
+    >>>
+    >>> x = Ok(5)                      # x = Result.Ok(5)
+    >>> y = Ok(6)                      # y = Result.Ok(6)
+    >>> print( x + y )
+    Ok(11)
+    >>> print( x / 0 )
+    Err("a / b resulted in an Exception | ZeroDivisionError: division by zero")
+    >>> print( x.apply(lambda a: a**2) )
+    Ok(25)
+    >>> z = x / 0                      # z = fResult.Err("a / b resulted in an Exception | ZeroDivisionError: division by zero")
+    >>> print( z.Err_msg_contains("ZeroDivisionError") )
+    True
+    >>> print( z.apply(lambda a: a**2) )
+    Err("a / b resulted in an Exception | ZeroDivisionError: division by zero | Result.apply on Err")
 
 Module Level Imports:
     - `traceback`: Used for generating traceback information when an error occurs.
@@ -77,7 +104,11 @@ __email__ = "boyce@engineer.com"
 __license__ = "MIT"
 __status__ = "Development"  # set to "Prototype", "Development", "Production"
 __url__ = "https://github.com/ScottBoyce-Python/ResultContainer"
-__description__ = "ResultContainer is a Result class that mimics the behavior of Rust's Result enum that wraps values in an Ok(value) and Err(e) variant. Math operations, attributes, and methods are passed to value in Ok(value). If an operation with the Ok(value) variant results in an error, then it is converted to an Err(e) variant. Err(e) contains one or more error messages and math operations, attributes, and methods result in appending the respective errors."
+__description__ = (
+    "ResultContainer is a Python library inspired by Rust's Result enum, designed for robust error handling. "
+    "It seamlessly supports mathematical operations, attribute access, and method chaining on Ok(value), "
+    "while automatically transitioning to Err(e) upon encountering errors, ensuring error tracking without exiting."
+)
 __copyright__ = "Copyright (c) 2025 Scott E. Boyce"
 
 __all__ = ["Result", "Ok", "Err", "ResultErr"]
@@ -87,7 +118,7 @@ __all__ = ["Result", "Ok", "Err", "ResultErr"]
 
 
 import traceback
-from collections.abc import Sequence, Iterable, KeysView, ValuesView
+from collections.abc import Iterable, Sequence
 from copy import deepcopy as _deepcopy
 
 
@@ -161,9 +192,9 @@ EXCLUDE_ATTRIBUTES = {
     "is_Ok_and",
     "copy",
     "update_result",
+    "Err_msg_contains",
     "add_Err_msg",
     "str",
-    # "_empty_error",
     "_operator_overload_prep",
     "_success",
 }
@@ -179,6 +210,7 @@ ATTRIBUTES_MISTAKES = {
     "expect_err": "expect_Err",
     "apply_err": "apply_Err",
     "map_err": "map_Err",
+    "err_msg_contains": "Err_msg_contains",
     "is_ok_and": "is_Ok_and",
     "add_err_msg": "add_Err_msg",
 }
@@ -202,8 +234,8 @@ class ResultErr(Exception):
     Args:
         msg  (Any, optional):           Error message(s) to initialize with.
                                         `str(msg)` is the message that is stored.
-                                        If msg is a Sequence, then each item in the Sequence is
-                                        appended as str(item) to the error messages.
+                                        #If msg is a Sequence, then each item in the Sequence is
+                                        #appended as str(item) to the error messages.
                                         Default is "", to disable error status.
         add_traceback (bool, optional): If True, then traceback information is added to the message.
         max_messages (int, optional):   The maximum number of error messages to store.
@@ -259,32 +291,35 @@ class ResultErr(Exception):
 
 
     Example usage:
+
+        >>> from ResultContainer import ResultErr
         >>>
-        >>> from Result import ResultErr
-        >>>
-        >>> err = ResultErr()              # empty error
-        >>> print(err.is_Err)
+        >>> err = ResultErr()              # empty error (non-error status)
+        >>> print( err.is_Err )
         False
-        >>> err.raises()                   # Nothing happens
+        >>> err.raises()                   # No error, so nothing happens
         >>>
-        >>> err.append("bad input")
-        >>> err.raises()                   # program terminates
-        ResultErr: bad input
-
-        >>> err = ResultErr("bad input")   # Initialized with an error
-        >>> print(err.is_Err)
+        >>> err.append("bad input")        # Add "bad input" error message and include traceback info
+        >>> print( err.is_Err )
         True
-        >>> err.raises()                   # program terminals
-        ResultErr: bad input
-
-        >>> err = ResultErr("bad input 1") # Initialized with an error
-        >>> err.append("bad input 2")      # Second error message
-        >>> print(err.is_Err)
+        >>> print( err.str() )
+        ResultErr("bad input")
+        >>> err.raises()                   # program terminates due to errors
+        Traceback (most recent call last):
+        ...
+        <bad input>
+        >>>
+        >>> err = ResultErr("bad input 1")                  # Initialized with an error, includes traceback info
+        >>> err.append("bad input 2", add_traceback=False)  # Second error message
+        >>> print( err.is_Err )
         True
-        >>> err.raises()                   # program terminates
-        ResultErr:
-        bad input 1
-        bad input 2
+        >>> print( err.str() )
+        ResultErr("bad input | bad input 2")
+        >>> err.raises()                   # program terminates due to errors
+        Traceback (most recent call last):
+        ...
+        <bad input 1>
+        <bad input 2>
     """
 
     msg: list[str]
@@ -300,8 +335,8 @@ class ResultErr(Exception):
         Args:
             msg  (Any, optional):           Error message(s) to initialize with.
                                             `str(msg)` is the message that is stored.
-                                            If msg is a Sequence, then each item in the Sequence is
-                                            appended as str(item) to the error messages.
+                                            #If msg is a Sequence, then each item in the Sequence is
+                                            #appended as str(item) to the error messages.
                                             Default is "", to disable error status.
             add_traceback (bool, optional): If True, then traceback information is added to the message.
             max_messages (int, optional):   The maximum number of error messages to store.
@@ -754,28 +789,58 @@ class Result:
             If deepcopy=True, the returns Result(deepcopy(value)).
 
     Example Usage:
+        >>> from ResultContainer import Result
+        >>>
         >>> result = Result.as_Ok("Success")
-        >>> print(result)                  # Outputs: Ok("Success")
-        >>> x = result.unwrap()            # x = "Success"
-        >>> print(result.expect())         # Outputs: Success  -> same output with unwrap()
-
+        >>> print(result)
+        Ok("Success")
+        >>> x = result.unwrap()            # returns wrapped value so, x = "Success"
+        >>> print( result.expect() )       # Same as unwrap() for Ok variant
+        Success
+        >>>
         >>> error = Result.as_Err("Failure")
-        >>> print(error)                   # Outputs: Err("Failure")
-        >>> x = error.unwrap()             # x = ResultErr("Failure")
-        >>> error.expect()                 # Raises ResultErr("Failure")
+        >>> print(error)
+        Err("Failure")
+        >>> x = error.unwrap()             # returns wrapped value, which is e in Err(e), so, x = ResultErr("Failure")
+        >>> x = error.expect()             # For Err variant, raises exception
+        Traceback (most recent call last):
+          File "example.py", line 10, in <module>
+            x = error.expect()             # For Err variant, raises exception
+                ^^^^^^^^^^^^^^
+          File "ResultContainer/__init__.py", line XYZ, in expect
+            self.raises(False, error_msg)
+          File "ResultContainer/__init__.py", line XYZ, in raises
+            raise self._val  # Err variant raises exception
+            ^^^^^^^^^^^^^^^
+        ResultContainer.ResultErr:
+          File "example.py", line  7, in <module>
+            error = Result.as_Err("Failure")
 
-        >>> x = Ok(5)
-        >>> y = Ok(6)
-        >>> print(x + y)                   # Outputs: Ok(11)
-        >>> print(x / 0)                   # Outputs: Err("a /= b resulted in an Exception. | ZeroDivisionError: division by zero")
-        >>> print(x.apply(lambda a: a**2)) # Outputs: Ok(25)
-        >>> z = x / 0
-        >>> print(z.apply(lambda a: a**2)) # Outputs: Err("a /= b resulted in an Exception. | ZeroDivisionError: division by zero | Result.apply applied in Error State")
+           <Failure>
 
+          File "example.py", line 10, in <module>
+            x = error.expect()             # For Err variant, raises exception
+
+           <Result.expect for Err variant>
+           <Result.raises() on Err>
+        >>>
+        >>> x = Result.as_Ok(5)            # x = Result.Ok(5)
+        >>> y = Result.as_Ok(6)            # y = Result.Ok(6)
+        >>> print( x + y )
+        Ok(11)
+        >>> print( x / 0 )
+        Err("a / b resulted in an Exception | ZeroDivisionError: division by zero")
+        >>> print( x.apply(lambda a: a**2) )
+        Ok(25)
+        >>> z = x / 0                      # z = Result.Err("a / b resulted in an Exception | ZeroDivisionError: division by zero")
+        >>> print( z.Err_msg_contains("ZeroDivisionError") )
+        True
+        >>> print( z.apply(lambda a: a**2) )
+        Err("a / b resulted in an Exception | ZeroDivisionError: division by zero | Result.apply on Err")
     """
 
     ResultErr = ResultErr
-    _success: bool
+    _success: bool  # = not isinstance(_val, ResultErr)
     _val: object
 
     def __init__(
