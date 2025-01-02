@@ -3,6 +3,7 @@
 <p align="left">
   <img src="https://github.com/ScottBoyce-Python/ResultContainer/actions/workflows/ResultContainer-pytest.yml/badge.svg" alt="Build Status" height="20">
 </p>
+
 ## About
 
 ResultContainer is a Python library inspired by [Rust’s Result](https://doc.rust-lang.org/std/result/enum.Result.html) enum, designed for robust error handling. It seamlessly supports mathematical operations, attribute access, and method chaining on `Ok(value)`, while automatically transitioning to `Err(e)` upon encountering errors, ensuring continuous error tracking and logging. Ideal for developers seeking structured and functional error management in Python.
