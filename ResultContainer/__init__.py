@@ -511,13 +511,13 @@ class ResultErr(Exception):
                 return f"ResultErr(\n  {s}\n)" if as_repr else f"\n  {s}\n"
             else:
                 s = ""
-                tb_old = []
+                not_first = False
                 for m, tb in zip(self.msg, self.traceback_info):
                     if len(tb) > 0:
-                        s += "\n\n" if len(tb_old) > 0 else "\n"
+                        s += "\n\n" if not_first else "\n"
                         s += "".join(tb)
+                        not_first = True
                     s += f"\n   <{m}>"
-                    tb_old = tb
 
                 return f"ResultErr({s}\n)" if as_repr else f"{s}\n"
 
