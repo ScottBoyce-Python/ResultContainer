@@ -1056,15 +1056,43 @@ class Result:
     def copy(self, deepcopy=True):
         return Result(self, deepcopy=deepcopy)
 
-    def str(self) -> str:
+    def str(self, result_repr: bool = False, value_repr: bool = False) -> str:
+        """Returns a string representation of the Result.
+        The following are the argument combinations and the expected string output
+        for Ok(value) variant:
+
+        result_repr, value_repr,      Return
+              False,      False,         'Ok(str(value))'
+              False,       True,         'Ok(repr(value))'
+               True,      False,  'Result.Ok(str(value))'
+               True,       True,  'Result.Ok(repr(value))'
+
+        Note, that if value is a str, then double quote are always included.
+        For Err(e) variant only result_repr is used:
+
+        result_repr,     Return
+              False,        'Err(e0 | e1 | e2 | ...)'
+               True, 'Result.Err(e0 | e1 | e2 | ...)'
+
+        Args:
+            result_repr (bool, optional): If True, prepend 'Result.' to the string. Defaults to False.
+            value_repr  (bool, optional): If True, run repr() on value. Defaults to False.
+
+        Returns:
+            str: _description_
+        """
+        if result_repr:
+            return f"Result.{self.str(False, value_repr)}"
+
         if self._success is None:
             return "Result(Empty)"
-        elif self._success:
+
+        if self._success:
             if isinstance(self._val, str):
                 return f'Ok("{self._val}")'
-            return f"Ok({self._val})"
-        else:
-            return f'Err("{" | ".join(f"{m}" for m in self._val.msg if m != "")}")'
+            val = repr(self._val) if value_repr else str(self._val)
+            return f"Ok({val})"
+        return f'Err("{" | ".join(f"{m}" for m in self._val.msg if m != "")}")'
 
     def _operator_overload_prep(self, b, operation: str):
         # Checks and returns:
@@ -1107,7 +1135,7 @@ class Result:
         return self.str()
 
     def __repr__(self):
-        return self.str()
+        return self.str(True, True)
 
     def __len__(self):
         if self._success:
