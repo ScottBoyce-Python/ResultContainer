@@ -41,16 +41,13 @@ file = "README.md"
 content-type = "text/markdown"
 
 [tool.pytest.ini_options]
-# agressive parallel options
-# addopts = "-ra" # Running with pytest-xdist not installed, requires serial.
-addopts = "-ra  -n2" # Defaults to 2 parallel tests, comment out if you want serial.
-# addopts = "-ra --dist worksteal -nauto" # Defaults to parallel tests, comment out if you want serial.
-# addopts = "-ra -v --dist worksteal -nauto" # parallel run with verbose output.
-# addopts = "-ra --dist worksteal -nauto -q"  # supress output during testing
+addopts = "-ra"                             # Serial run, removes pytest-xdist dependency
+#addopts = "-ra  -n2"                       # Run tests on 2 CPUs
+#addopts = "-ra --dist worksteal -nauto"    # Max parallel tests
+#addopts = "-ra --dist worksteal -nauto -v" #   with verbose output.
+#addopts = "-ra --dist worksteal -nauto -q" #   with no output
 
-# Regular parallel options
-# addopts = "-ra -nauto"  # Defaults to parallel tests, comment out if you want serial.
-# addopts = "-ra -nauto -q"  # supress output during testing
+doctest_optionflags = "NORMALIZE_WHITESPACE ELLIPSIS"
 
 minversion = "6.0"
 testpaths = ["tests"]
