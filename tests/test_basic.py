@@ -53,6 +53,34 @@ def test_err_addition():
     assert "a + b with a and b as Err" in result3.unwrap().msg
 
 
+def test_ok_addition_with_zero():
+    result = Ok(0) + Ok(5)
+    assert result.is_Ok
+    assert result.unwrap() == 5
+
+
+def test_ok_addition_with_negative():
+    result = Ok(-5) + Ok(10)
+    assert result.is_Ok
+    assert result.unwrap() == 5
+
+
+def test_err_addition_with_large_values():
+    result1 = Ok(10**100)
+    result2 = Err("Overflow")
+    result3 = result1 + result2
+    assert result3.is_Err
+    assert result3.Err_msg_contains("a + b with b as Err")
+
+
+def test_ok_addition_with_incompatible_type():
+    result1 = Ok(5)
+    result2 = Ok("string")
+    result3 = result1 + result2
+    assert result3.is_Err
+    assert result3.Err_msg_contains("TypeError")
+
+
 # Test for ResultErr initialization
 def test_resulterr_initialization():
     err = ResultErr("Error occurred")
@@ -222,3 +250,42 @@ def test_result_err_eq():
     result1 = Err("Error1")
     result2 = Err("Error2")
     assert result1 == result2
+
+
+def test_ok_initialization_with_none():
+    result = Ok(None)
+    assert result.is_Ok
+    assert result.unwrap() is None
+
+
+def test_err_initialization_with_none():
+    result = Err(None)
+    assert result.is_Err
+    assert result.unwrap().msg == ["None"]
+
+
+def test_ok_initialization_with_unusual_types():
+    result = Ok({"key": "value"})
+    assert result.is_Ok
+    assert result.unwrap() == {"key": "value"}
+    assert result["key"] == Ok("value")
+
+
+def test_err_initialization_with_unusual_types():
+    dic = {"error": "message"}
+    dic_str = str(dic)
+    #
+    result = Err(dic)
+    assert result.is_Err
+    assert result.unwrap().msg == [dic_str]
+    key = "error"
+    err = result[key]
+    assert err.unwrap().msg == [dic_str, f'Err()["{key}"] is not subscriptable']
+
+
+def test_err_initialization_with_large_dict():
+    large_dict = {i: i for i in range(10**6)}
+    result = Err(large_dict)
+    assert result.is_Err
+    assert result.unwrap().msg == [str(large_dict)]
+

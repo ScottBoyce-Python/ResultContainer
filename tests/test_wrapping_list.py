@@ -480,3 +480,13 @@ def test_list_multiplication():
     result2 = Ok(5)
     combined_result = result1 * result2
     assert combined_result.unwrap() == [1, 1, 1, 1, 1]
+
+
+def test_ok_initialization_with_large_list():
+    large_list = list(range(10**6))
+    result = Ok(large_list, deepcopy=True)
+    assert result.is_Ok
+    assert result.unwrap() == large_list
+    assert result[5] == 5
+    result[5] = -5
+    assert result[5] == -5
