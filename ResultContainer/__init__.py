@@ -251,8 +251,11 @@ class ResultErr(Exception):
             Remove and return the last error message and traceback information.
             If the size is reduced to zero, then changes to non-error status.
 
-        has_msg(msg):
+        contains_msg(msg: str):
             Check if a specific message exists in the error messages.
+
+        contains(sub_msg: str):
+            Check if any of the error messages contain the sub_msg.
 
 
     Example usage:
@@ -434,9 +437,23 @@ class ResultErr(Exception):
         except Exception:
             return [], []
 
-    def has_msg(self, msg):
+    def contains_msg(self, msg: str):
         """Check if a specific message exists in the error messages."""
         return msg in self.msg
+
+    def contains(self, sub_msg: str) -> bool:
+        """Check if any of the error messages contain the sub_msg.
+
+        Args:
+            sub_msg (str): String to search for in the error messages.
+
+        Returns:
+            bool: True if sub_msg is found, otherwise False.
+        """
+        for msg in self.msg:
+            if sub_msg in msg:
+                return True
+        return False
 
     def str(self, sep: str = " | ", as_repr: bool = True, add_traceback: bool = False) -> str:
         """Return a string representation of the error messages.
@@ -507,8 +524,8 @@ class ResultErr(Exception):
     def __deepcopy__(self, unused=None):
         return self.copy()
 
-    def __contains__(self, msg):
-        return msg in self.msg
+    def __contains__(self, sub_msg: str):
+        return self.contains(sub_msg)
 
     def __iadd__(self, other):  # To get called on addition with assignment e.g. a +=b.
         self.append(other)
@@ -718,6 +735,10 @@ class Result:
             That is, each `item` is returned as `Ok(item)`,
             unless type(item) is ResultErr, then returns Err(item).
             If expand is True, then returns `list(iter_wrap())`.
+
+        Err_msg_contains(sub_msg: str):
+            Returns true if Err(e) variant and sub_msg is contained in
+            any of the error messages. The Ok variant returns False.
 
         add_Err_msg(error_msg, add_traceback=True):
             For the Ok(value)  variant, converts to Err(error_msg).
@@ -1000,7 +1021,20 @@ class Result:
             return self.iter_unwrap(expand)
         return self.iter_wrap(expand)
 
-    def add_Err_msg(self, error_msg, add_traceback=True, *, _levels=-4):
+    def Err_msg_contains(self, sub_msg: str) -> bool:
+        """
+        Returns true if Err(e) variant and sub_msg is contained in any of
+        the error messages. The Ok variant returns False.
+
+        Args:
+            sub_msg (str): String to search for in the error messages.
+
+        Returns:
+            bool: True if sub_msg is found, otherwise False.
+        """
+        return False if self._success else self._val.contains(sub_msg)
+
+    def add_Err_msg(self, error_msg, add_traceback: bool = True, *, _levels=-4):
         """Convert to error status and append error message."""
         if self._success:
             if error_msg == "" and self._val == "":
