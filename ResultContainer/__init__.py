@@ -980,6 +980,31 @@ class Result:
             #
         raise self._val  # Err variant raises exception
 
+    def getitem(self, key, default):
+        if self._success:
+            try:
+                return Result(self._val[key])
+            except Exception:
+                pass
+        return Result(default)
+
+    def setitem(self, key, value, error_raises_exception=False):
+        if self._success:
+            try:
+                self._val[key] = value
+                return self
+            except Exception as e:
+                err = Result(
+                    f"Result.Ok.setitem({key}) raises {e}",
+                    success=False,
+                    _levels=-5,
+                )
+                if error_raises_exception:
+                    raise self._val
+                return err
+        self.add_Err_msg(f"Result.Err.setitem({key}) is not subscriptable", _levels=-4)
+        return self
+
     def is_Ok_and(self, bool_ok_func, *args, **kwargs) -> bool:
         return self._success and bool_ok_func(self._val, *args, **kwargs)
 
