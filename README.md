@@ -1,4 +1,4 @@
-# ResultContainer: Rust Result Enums in Python
+# ResultContainer: Rust Result Enum in Python
 
 <p align="left">
   <img src="https://github.com/ScottBoyce-Python/ResultContainer/actions/workflows/ResultContainer-pytest.yml/badge.svg" alt="Build Status" height="20">
@@ -6,7 +6,7 @@
 
 ## About
 
-ResultContainer is a Python library inspired by [Rust’s Result](https://doc.rust-lang.org/std/result/enum.Result.html) enum, designed for robust error handling. It seamlessly supports mathematical operations, attribute access, and method chaining on `Ok(value)`, while automatically transitioning to `Err(e)` upon encountering errors, ensuring continuous error tracking and logging. Ideal for developers seeking structured and functional error management in Python.
+ResultContainer is a Python library inspired by [Rust's Result](https://doc.rust-lang.org/std/result/enum.Result.html) enum, designed for robust error handling. It seamlessly supports mathematical operations, attribute access, and method chaining on `Ok(value)`, while automatically transitioning to `Err(e)` upon encountering errors, ensuring continuous error tracking and logging. Ideal for developers seeking structured and functional error management in Python.
 
 ## Description
 
@@ -406,7 +406,7 @@ z = x + y         # z = Ok([1, 2, 3, 4, 5, 6, 7])
 
   
 
-### Wrapping `datetime Example
+### Wrapping `datetime` Example
 
 ```python
 from ResultContainer import Result, Ok, Err
