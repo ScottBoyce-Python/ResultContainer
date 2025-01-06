@@ -1321,9 +1321,9 @@ class Result:
         if not self._success:
             err = Result(self)
             if isinstance(key, str):
-                err.add_Err_msg(f'Err()["{key}"] is not subscriptable', _levels=-4)
+                err.add_Err_msg(f'Err({repr(self._val)})["{key}"] is not subscriptable', _levels=-4)
             else:
-                err.add_Err_msg(f"Err()[{key}] is not subscriptable", _levels=-4)
+                err.add_Err_msg(f"Err({repr(self._val)})[{key}] is not subscriptable", _levels=-4)
             return err
         try:
             return Result(self._val[key])
@@ -1331,7 +1331,8 @@ class Result:
             return Result(
                 "",
                 success=False,
-                error_msg=f"Ok()[{key}] raises {e}",
+                error_msg=f"Ok({self._value})[{key}] raises {e}",
+                _levels=-5,
             )
 
     def __setitem__(self, key, value):  # set from index, a[index] = XYZ
@@ -1339,7 +1340,7 @@ class Result:
             try:
                 self._val[key] = value
             except Exception as e:
-                self.add_Err_msg(f"Ok()[{key}]=value raises {e}", _levels=-4)
+                raise ResultErr(f"Ok()[{key}]=value failed.", _levels=-3) from e
         else:
             self.add_Err_msg(f"Err()[{key}] is not subscriptable", _levels=-4)
 
