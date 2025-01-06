@@ -705,6 +705,17 @@ class Result:
             If  Ok variant, then raises ResultErr(ok_msg);
             If Err variant, then returns e in Err(e), which is type ResultErr.
 
+        getitem(key, default):
+            Returns the item stored in value from Ok(value) for a given key.
+            That is: `Ok(value)[key]` returns `Ok(value[key])`.
+            All other errors return `Ok(default)`.
+
+        setitem(key, value, error_raises_exception=False):
+            Sets the value in Ok(value) at a given key to item and return a Result.
+            That is: `Ok(value)[key] = 99` sets `value[key] = 99` and returns the updated instance.
+            Any error returns a new Err(e) instance, or if error_raises_exception is True
+            raises a ResultErr exception.
+
         is_Ok_and(bool_ok_func, *args, **kwargs):
             True if Ok(value) variant and ok_func(value, *args, **kwargs) returns True,
             otherwise False.
@@ -981,6 +992,19 @@ class Result:
         raise self._val  # Err variant raises exception
 
     def getitem(self, key, default):
+        """
+        Returns the item stored in value from Ok(value) for a given key.
+        That is:
+            `Ok(value)[key]` returns `Ok(value[key])`
+        If `Err(e)` variant or a key error, then returns `Ok(default)` instead.
+
+        Args:
+            key     (Any): The key to retrieve the value for.
+            default (Any): The default value to use for the error case.
+
+        Returns:
+            Ok(value[key]) or Ok(default)
+        """
         if self._success:
             try:
                 return Result(self._val[key])
@@ -989,6 +1013,21 @@ class Result:
         return Result(default)
 
     def setitem(self, key, value, error_raises_exception=False):
+        """
+        Sets the value in Ok(value) at a given key to item and return a Result.
+        That is:
+            `Ok(value)[key] = 99` sets `value[key] = 99` and returns the updated `Ok(value)`.
+        If `Err(e)` variant, then adds not subscriptable error and returns the updated `Err(e)`.
+        If a key error results, then returns a new instance of `Err(e)`.
+
+        Args:
+            key   (Any): The key to retrieve the value for.
+            value (Any): The value to set for the given key.
+            error_raises_exception (bool): If true, then raises a ResultErr if `Ok(value)[key]` is invalid.
+
+        Returns:
+            Result: Either the original instance updated with the item, or a new `Err(e)` instance.
+        """
         if self._success:
             try:
                 self._val[key] = value
@@ -1343,6 +1382,19 @@ class Result:
             return self
 
     def __getitem__(self, key):  # index return, a[index]
+        """
+        Returns the item stored in value from Ok(value) for a given key.
+        That is:
+            `Ok(value)[key]` returns `Ok(value[key])`
+        If `Err(e)` variant, then adds not subscriptable error and returns the updated `Err(e)`.
+        All other exceptions return a new instance of Err(e).
+
+        Args:
+            key     (Any): The key to retrieve the value for.
+
+        Returns:
+            Ok(value[key]) or Err(e)
+        """
         if not self._success:
             err = Result(self)
             if isinstance(key, str):
@@ -1362,6 +1414,17 @@ class Result:
             )
 
     def __setitem__(self, key, value):  # set from index, a[index] = XYZ
+        """
+        Sets the value in Ok(value) at a given key to item.
+        That is:
+            `Ok(value)[key] = 99` sets `value[key] = 99`.
+        If `Err(e)` variant, then adds a not subscriptable error.
+        If a key error results, then returns raises a ResultErr exception.
+
+        Args:
+            key   (Any): The key to retrieve the value for.
+            value (Any): The value to set for the given key.
+        """
         if self._success:
             try:
                 self._val[key] = value
