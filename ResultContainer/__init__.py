@@ -995,14 +995,14 @@ class Result:
                 return self
             except Exception as e:
                 err = Result(
-                    f"Result.Ok.setitem({key}) raises {e}",
+                    f"{self.str()}.setitem({key}) raises {e}",
                     success=False,
                     _levels=-5,
                 )
                 if error_raises_exception:
                     raise self._val
                 return err
-        self.add_Err_msg(f"Result.Err.setitem({key}) is not subscriptable", _levels=-4)
+        self.add_Err_msg(f"{self.str()}.setitem({key}) is not subscriptable", _levels=-4)
         return self
 
     def is_Ok_and(self, bool_ok_func, *args, **kwargs) -> bool:
@@ -1346,17 +1346,18 @@ class Result:
         if not self._success:
             err = Result(self)
             if isinstance(key, str):
-                err.add_Err_msg(f'Err({repr(self._val)})["{key}"] is not subscriptable', _levels=-4)
-            else:
-                err.add_Err_msg(f"Err({repr(self._val)})[{key}] is not subscriptable", _levels=-4)
+                key = f'"{key}"'
+            err.add_Err_msg(f"{err.str()}[{key}] is not subscriptable", _levels=-4)
             return err
         try:
             return Result(self._val[key])
         except Exception as e:
+            if isinstance(key, str):
+                key = f'"{key}"'
             return Result(
                 "",
                 success=False,
-                error_msg=f"Ok({self._value})[{key}] raises {e}",
+                error_msg=f"{self.str()}[{key}] raises {e}",
                 _levels=-5,
             )
 
@@ -1365,9 +1366,9 @@ class Result:
             try:
                 self._val[key] = value
             except Exception as e:
-                raise ResultErr(f"Ok()[{key}]=value failed.", _levels=-3) from e
+                raise ResultErr(f"{self.str()}[{key}]=value exception raised", _levels=-3) from e
         else:
-            self.add_Err_msg(f"Err()[{key}] is not subscriptable", _levels=-4)
+            self.add_Err_msg(f"{self.str()}[{key}] is not subscriptable", _levels=-4)
 
     def __iter__(self):
         return self.iter_wrap()

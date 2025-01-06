@@ -275,12 +275,12 @@ def test_err_initialization_with_unusual_types():
     dic = {"error": "message"}
     dic_str = str(dic)
     #
-    result = Err(dic)
-    assert result.is_Err
-    assert result.unwrap().msg == [dic_str]
+    error_result = Err(dic)
+    assert error_result.is_Err
+    assert error_result.unwrap().msg == [dic_str]
     key = "error"
-    err = result[key]
-    assert err.unwrap().msg == [dic_str, f'Err()["{key}"] is not subscriptable']
+    err = error_result[key]
+    assert err.unwrap().msg == [dic_str, f'Err("{dic_str}")["{key}"] is not subscriptable']
 
 
 def test_err_initialization_with_large_dict():
@@ -288,4 +288,3 @@ def test_err_initialization_with_large_dict():
     result = Err(large_dict)
     assert result.is_Err
     assert result.unwrap().msg == [str(large_dict)]
-
