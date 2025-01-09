@@ -726,6 +726,14 @@ class Result:
             otherwise False.
               - If function call fails, then raises exception.
 
+        Ok_and(value2):
+            If Ok(value) variant, returns Ok(value2),
+            otherwise returns Err(e) instance.
+
+        Ok_or(value2):
+            If `Err(e)` variant, returns Ok(value2),
+            otherwise returns Ok(value).
+
         inspect(ok_func, *args, **kwargs):
             If `Ok(value)`, then evaluates `ok_func(value)`.
             Returns original Result instance.
@@ -1069,6 +1077,16 @@ class Result:
 
     def is_Err_and(self, bool_err_func, *args, **kwargs) -> bool:
         return not self._success and bool_err_func(self._val, *args, **kwargs)
+
+    def Ok_and(self, value2):
+        if self._success:
+            return Result(value2)
+        return self
+
+    def Ok_or(self, value2):
+        if not self._success:
+            return Result(value2)
+        return self
 
     def inspect(self, ok_func, *args, **kwargs):
         if self._success:
