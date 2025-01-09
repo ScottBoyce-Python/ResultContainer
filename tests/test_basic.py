@@ -25,6 +25,25 @@ def test_err_initialization():
     assert result1 == result2
 
 
+def test_result_error_handling():
+    """Test detailed error handling and propagation."""
+    result = Result.as_Err("Failure")
+
+    # Error message check
+    assert result.Err_msg_contains("Failure")
+
+    # Add message
+    result.add_Err_msg("Another failure")
+    assert result.Err_msg_contains("Another failure")
+
+    # Expect error
+    with pytest.raises(ResultErr):
+        result.expect()
+
+    with pytest.raises(ResultErr):
+        result.raises()
+
+
 # Test for adding Ok values
 def test_ok_addition():
     result1 = Ok(5)
@@ -288,3 +307,27 @@ def test_err_initialization_with_large_dict():
     result = Err(large_dict)
     assert result.is_Err
     assert result.unwrap().msg == [str(large_dict)]
+
+
+def test_operator_overloading():
+    result1 = Ok(10)
+    result2 = Ok(5)
+
+    # Arithmetic
+    result_sum = result1 + result2
+    assert result_sum == 15
+    assert result_sum == Ok(15)
+    assert result_sum.unwrap() == 15
+    assert result_sum.expect() == 15
+
+    result_diff = result1 - result2
+    assert result_diff == 5
+    assert result_diff == Ok(5)
+    assert result_diff.unwrap() == 5
+    assert result_diff.expect() == 5
+
+    # Comparison
+    assert result1 > result2
+    assert result1 >= result2
+    assert result1 != result2
+    assert result1 == Ok(10)
