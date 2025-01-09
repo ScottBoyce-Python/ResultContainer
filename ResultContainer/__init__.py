@@ -726,6 +726,21 @@ class Result:
             otherwise False.
               - If function call fails, then raises exception.
 
+        inspect(ok_func, *args, **kwargs):
+            If `Ok(value)`, then evaluates `ok_func(value)`.
+            Returns original Result instance.
+              - If ok_func fails, raises an exception.
+
+        inspect_apply(ok_func, *args, **kwargs):
+            If `Ok(value)`, then evaluates `ok_func(value)`.
+            Returns original Result instance.
+              - If ok_func fails, no exception is raised .
+
+        inspect_err(err_func, *args, **kwargs):
+            If `Err(e)`, then evaluates `err_func(e)`.
+            Returns original Result instance.
+              - If err_func fails, raises an exception.
+
         apply(ok_func, *args, **kwargs):
             Maps a function to the Result to return a new Result.
             For the Ok(value)  variant, returns `Ok(ok_func(value, *args, **kwargs))`.
@@ -1054,6 +1069,24 @@ class Result:
 
     def is_Err_and(self, bool_err_func, *args, **kwargs) -> bool:
         return not self._success and bool_err_func(self._val, *args, **kwargs)
+
+    def inspect(self, ok_func, *args, **kwargs):
+        if self._success:
+            ok_func(self._val, *args, **kwargs)
+        return self
+
+    def inspect_apply(self, ok_func, *args, **kwargs):
+        if self._success:
+            try:
+                ok_func(self._val, *args, **kwargs)
+            except Exception:
+                pass
+        return self
+
+    def inspect_err(self, err_func, *args, **kwargs):
+        if not self._success:
+            err_func(self._val, *args, **kwargs)
+        return self
 
     def apply(self, ok_func, *args, **kwargs):
         if self._success:
