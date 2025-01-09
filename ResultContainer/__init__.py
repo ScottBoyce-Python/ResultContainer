@@ -443,7 +443,7 @@ class ResultErr(Exception):
 
     def append(self, msg, add_traceback: bool = True, *, _levels=-2):
         """
-        Append an error message to the instance. If
+        Append an error message to the instance and return it.
 
         Args:
             msg  (Any, optional): Error message to append.
@@ -451,6 +451,7 @@ class ResultErr(Exception):
         """
         if len(self.msg) < self.max_messages:
             self._process_error_messages(msg, add_traceback, _levels=_levels)
+        return self
 
     def set_max_messages(self, max_messages: int):
         """Set the maximum number of error messages that are kept."""
@@ -460,6 +461,7 @@ class ResultErr(Exception):
             self.max_messages = max_messages
 
         self._check_max_messages()
+        return self
 
     def copy(self):
         """Return a copy of the ResultErr instance."""
@@ -1247,6 +1249,7 @@ class Result:
             self._val = ResultErr()
         if error_msg != "":
             self._val.append(error_msg, add_traceback, _levels=_levels)
+        return self
 
     def update_result(self, value, create_new=False, deepcopy=False):
         if create_new:
