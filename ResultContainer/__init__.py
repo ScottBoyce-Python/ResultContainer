@@ -721,6 +721,11 @@ class Result:
             otherwise False.
               - If function call fails, then raises exception.
 
+        is_Err_and(bool_err_func, *args, **kwargs):
+            True if Err(e) variant and bool_err_func(e, *args, **kwargs) returns True,
+            otherwise False.
+              - If function call fails, then raises exception.
+
         apply(ok_func, *args, **kwargs):
             Maps a function to the Result to return a new Result.
             For the Ok(value)  variant, returns `Ok(ok_func(value, *args, **kwargs))`.
@@ -1046,6 +1051,9 @@ class Result:
 
     def is_Ok_and(self, bool_ok_func, *args, **kwargs) -> bool:
         return self._success and bool_ok_func(self._val, *args, **kwargs)
+
+    def is_Err_and(self, bool_err_func, *args, **kwargs) -> bool:
+        return not self._success and bool_err_func(self._val, *args, **kwargs)
 
     def apply(self, ok_func, *args, **kwargs):
         if self._success:
