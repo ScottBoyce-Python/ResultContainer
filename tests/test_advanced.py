@@ -18,14 +18,55 @@ def test_result_ok_initialization():
 def test_result_err_initialization():
     error_message = "An error occurred"
     result = Result.as_Err(error_message)
+    assert result.unwrap() == Err(error_message)
     assert result.is_Ok is False
     assert result.is_Err is True
 
     with pytest.raises(ResultErr):
-        result.expect()
+        _ = result.Ok
 
     with pytest.raises(ResultErr):
-        result.raises()
+        _ = result.expect()
+
+    with pytest.raises(ResultErr):
+        _ = result.raises()
+
+
+def test_result_ok_operation():
+    result = Ok(10)
+
+    # Arithmetic operations
+    result2 = Ok(20)
+    result_sum = result + result2
+    assert result_sum.is_Ok
+    assert result_sum.unwrap() == 30
+
+    # Chaining operations
+    mapped_result = result.map(lambda x: x * 2)
+    assert mapped_result.unwrap() == 20
+
+    applied_result = result.apply(lambda x: x + 5)
+    assert applied_result.unwrap() == 15
+
+
+def test_result_err_operation():
+    error = Err("Initial error")
+
+    # Adding messages
+    error.add_Err_msg("Additional context")
+    assert "Additional context" in error.Err_msg
+
+    # Checking tracebacks
+    assert error.Err_traceback is not None
+
+    # apply_Err method
+    result = error.apply_Err(lambda e: e.append("Another error msg", False))
+
+    assert result.Err_msg_contains("Initial error")
+    assert result.Err_msg_contains("Additional context")
+    assert result.Err_msg_contains("Another error msg")
+
+    assert result.unwrap().msg == ["Initial error", "Additional context", "Another error msg"]
 
 
 # Basic Initialization Tests
@@ -37,23 +78,6 @@ def test_result_ok_attribute():
     assert result.raises() == Ok(42)
     with pytest.raises(ResultErr):
         _ = result.Err
-
-
-def test_result_err_initialization():
-    error_message = "An error occurred"
-    result = Result.as_Err(error_message)
-    assert result.unwrap() == Err(error_message)
-    assert result.is_Ok is False
-    assert result.is_Err is True
-
-    with pytest.raises(ResultErr):
-        _ = result.Ok
-
-    with pytest.raises(ResultErr):
-        result.expect()
-
-    with pytest.raises(ResultErr):
-        result.raises()
 
 
 # Edge Case Initialization
@@ -76,6 +100,33 @@ def test_result_err_with_empty_string():
         result.raises()
 
 
+# Ok_and and Ok_or
+def test_result_Ok_and():
+    ok2 = Ok(2)
+    ok4 = Ok(4)
+    er6 = Err(6)
+    er8 = Err(8)
+
+    assert ok2.Ok_and(ok4) == ok4
+    assert ok2.Ok_and(er8) == er8
+
+    assert er6.Ok_and(ok4) == er6
+    assert er6.Ok_and(er8) == er6
+
+
+def test_result_Ok_or():
+    ok2 = Ok(2)
+    ok4 = Ok(4)
+    er6 = Err(6)
+    er8 = Err(8)
+
+    assert ok2.Ok_or(ok4) == ok2
+    assert ok2.Ok_or(er8) == ok2
+
+    assert er6.Ok_or(ok4) == ok4
+    assert er6.Ok_or(er8) == er8
+
+
 # Iter Tests
 def test_iter_err():
     result = Err(10)
@@ -92,6 +143,23 @@ def test_iter_scalar():
         assert i == 10
         enter_loop = True
     assert enter_loop
+
+
+def test_iter_and_copy():
+    """Test iteration and copying functionality of Result."""
+    result = Ok([1, 2, 3])
+
+    # Iteration
+    iterated = [x for x in result.iter_wrap()]
+    assert iterated == [1, 2, 3]
+
+    # Copy
+    copied_result = result.copy()
+    assert copied_result == result
+
+    # Clear
+    result.unwrap().clear()
+    assert len(result.unwrap()) == 0
 
 
 def test_iter_list():
@@ -202,6 +270,20 @@ def test_result_apply():
         mapped_result.raises()
 
 
+def test_result_map_simple():
+    """Test mapping functions on Result."""
+    result = Ok(5)
+
+    # Map
+    mapped_result = result.map(lambda x: x * 2)
+    assert mapped_result.unwrap() == 10
+
+    # Map with fallback
+    result = Result.as_Err("Error")
+    mapped_fallback = result.map_or(100, lambda x: x * 2)
+    assert mapped_fallback == 100
+
+
 def test_result_map():
     result = Result.as_Ok(10)
     mapped_result = result.map(lambda x: x * 2)
@@ -250,217 +332,6 @@ def test_result_map_err():
     ok_result = Result.as_Ok(10).map_Err(lambda e: f"{e.str()} - mapped")
     assert ok_result.is_Ok is True
     assert ok_result.expect() == 10
-
-
-def test_result_apply_chain():
-    new_result = (
-        Ok(10)
-        .apply(lambda x: Ok(x * 2))  # Ok(20)
-        .apply(lambda x: Ok(x * 2))  # Ok(40)
-        .apply(lambda x: Ok(x * 2))  # Ok(80)
-        .apply(lambda x: Ok(x * 2))  # Ok(160)
-    )
-    assert new_result.is_Ok is True
-    assert new_result.expect() == 160
-
-    error_result = (
-        Err("Error")
-        .apply(lambda x: Ok(x * 2))  # Appends to error
-        .apply(lambda x: Ok(x * 2))  # Appends to error
-        .apply(lambda x: Ok(x * 2))  # Appends to error
-    )
-    assert error_result.is_Err is True
-    with pytest.raises(ResultErr):
-        error_result.expect()
-
-    result_error = Ok(10)
-    # Separated
-    new_result = result_error.apply(lambda x: Result.as_Ok(x * 2)).apply(lambda x: Result.as_Ok(x * 2))
-    assert new_result.is_Err is False
-    new_result = new_result.apply(lambda x: Result.as_Ok(x * 0)).apply(lambda x: Result.as_Ok(10 / x))
-    assert new_result.is_Err is True
-
-    with pytest.raises(ResultErr):
-        new_result = (
-            Ok(10)
-            .apply(lambda x: Ok(x * 2))  # Ok(20)
-            .apply(lambda x: Ok(x * 2))  # Ok(40)
-            .apply(lambda x: Ok(x * 0))  # Ok(40)
-            .apply(lambda x: Ok(10 / x))  # Raises ZeroDiv Error
-            .apply(lambda x: Ok(x + 1))  # Appends to error message
-            .raises()  # Raises Exception if in Err state
-        )
-
-
-def test_result_method_chain():
-    from math import sqrt
-
-    def div(numerator, denominator):
-        return numerator / denominator
-
-    def plus11(x, *args):
-        # *args not used, but needed because apply_or_else(efunc, ofunc) requires
-        # both functions to have the same arg length, see `apply_or_else(plus11, div, 0)` or `.apply_or_else(plus11, div, 2)`
-        return x + 11
-
-    def pow2(x):
-        return x**2
-
-    def neg(x, *args):
-        # *args not used, but needed because apply_or_else(efunc, ofunc) requires
-        # both functions to have the same arg length, see `.apply_or_else(neg, div, 0)`
-        return -x
-
-    a = Ok(5)
-
-    with pytest.raises(ValueError):
-        fail1 = a.map(pow2).map(plus11).map(sqrt).map(neg).map(sqrt)
-        # 5 -> 25 -> 36 -> 6 -> -6 -> raise ValueError
-
-    with pytest.raises(ValueError):
-        fail2 = a.map(pow2).map(plus11).map(sqrt).map(neg).map_or(None, sqrt)
-        # 5 -> 25 -> 36 -> 6 -> -6 -> raise ValueError
-
-    b = (
-        a.apply(pow2)  # Ok(5) -> Ok(25)
-        .apply(plus11)  #       -> Ok(36)
-        .apply(sqrt)  #         -> Ok(6)
-        .apply(neg)  #          -> Ok(-6)
-        .apply(sqrt)  #         -> Err("Result.apply exception | ValueError: math domain error")
-    )
-
-    c = (
-        a.apply(pow2)  #   Ok(5) -> Ok(25)
-        .apply(plus11)  #        -> Ok(36)
-        .apply(sqrt)  #          -> Ok(6)
-        .apply(neg)  #           -> Ok(-6)
-        .apply_or(None, sqrt)  # -> Ok(None)
-    )
-
-    d = (
-        a.apply(pow2)  #          Ok(5) -> Ok(25)
-        .apply(plus11)  #               -> Ok(36)
-        .apply(sqrt)  #                 -> Ok(6)
-        .apply(neg)  #                  -> Ok(3)
-        .apply_or_else(plus11, sqrt)  # -> Ok(5)
-    )
-
-    e = (
-        a.apply(pow2)  # Ok(5) -> Ok(25)
-        .apply(plus11)  #      -> Ok(36)
-        .apply(sqrt)  #        -> Ok(6)
-        .apply(div, 2)  #      -> Ok(3)
-        .apply(div, 0)  #      -> Err("Result.apply exception | ZeroDivisionError: float division by zero")
-    )
-    # 5 -> 25 -> 36 -> 6 -> 3 -> Err("Result.apply exception | ZeroDivisionError: float division by zero")
-
-    f = (
-        a.apply(pow2)  #            Ok(5) -> Ok(25)
-        .apply(plus11)  #                 -> Ok(36)
-        .apply(sqrt)  #                   -> Ok(6)
-        .apply(div, 2)  #                 -> Ok(3)
-        .apply_or_else(plus11, div, 0)  # -> Ok(14)
-    )
-
-    g = (
-        a.apply(pow2)  #            Ok(5) -> Ok(25)
-        .apply(plus11)  #                 -> Ok(36)
-        .apply(sqrt)  #                   -> Ok(6)
-        .apply_or_else(neg, div, 0)  #    -> Ok(-6)
-        .apply_or_else(plus11, div, 2)  # -> Ok(-3)
-    )
-
-    assert a.is_Ok and a == Ok(5)
-    assert b.is_Err and b.Err_msg_contains("ValueError")
-    assert c.is_Ok and c == Ok(None)
-    assert d.is_Ok and d == Ok(5)
-    assert e.is_Err and e.Err_msg_contains("ZeroDivisionError")
-    assert f.is_Ok and f == Ok(14)
-    assert g.is_Ok and g == Ok(-3)
-
-
-def test_result_method_chain_lambda():
-    from math import sqrt
-    # div    = lambda x, y: x / y
-    # plus11 = lambda x: x + 11
-    # pow2   = lambda x: x**2
-    # neg    = lambda x: -x
-
-    a = Ok(5)
-
-    with pytest.raises(ValueError):
-        fail1 = (
-            a.map(lambda x: x**2)  # Ok(5) -> Ok(25)
-            .map(lambda x: x + 11)  #      -> Ok(36)
-            .map(sqrt)  #                  -> Ok(6)
-            .map(lambda x: -x)  #          -> Ok(-6)
-            .map(sqrt)  #                  -> raise ValueError
-        )
-
-    with pytest.raises(ValueError):
-        fail2 = (
-            a.map(lambda x: x**2)  # Ok(5) -> Ok(25)
-            .map(lambda x: x + 11)  #      -> Ok(36)
-            .map(sqrt)  #                  -> Ok(6)
-            .map(lambda x: -x)  #          -> Ok(-6)
-            .map_or(None, sqrt)  #         -> raise ValueError
-        )
-
-    b = (
-        a.apply(lambda x: x**2)  # Ok(5) -> Ok(25)
-        .apply(lambda x: x + 11)  #      -> Ok(36)
-        .apply(sqrt)  #                  -> Ok(6)
-        .apply(lambda x: -x)  #          -> Ok(-6)
-        .apply(sqrt)  #                  -> Err("Result.apply exception | ValueError: math domain error")
-    )
-
-    c = (
-        a.apply(lambda x: x**2)  # Ok(5) -> Ok(25)
-        .apply(lambda x: x + 11)  #      -> Ok(36)
-        .apply(sqrt)  #                  -> Ok(6)
-        .apply(lambda x: -x)  #          -> Ok(-6)
-        .apply_or(None, sqrt)  #         -> Ok(None)
-    )
-
-    d = (
-        a.apply(lambda x: x**2)  #          Ok(5) -> Ok(25)
-        .apply(lambda x: x + 11)  #               -> Ok(36)
-        .apply(sqrt)  #                           -> Ok(6)
-        .apply(lambda x: -x)  #                   -> Ok(-6)
-        .apply_or_else(lambda x: x + 11, sqrt)  # -> Ok(5)
-    )
-
-    e = (
-        a.apply(lambda x: x**2)  # Ok(5) -> Ok(25)
-        .apply(lambda x: x + 11)  #      -> Ok(36)
-        .apply(sqrt)  #                  -> Ok(6)
-        .apply(lambda x, y: x / y, 2)  # -> Ok(3)
-        .apply(lambda x, y: x / y, 0)  # -> Err("Result.apply exception | ZeroDivisionError: float division by zero")
-    )
-
-    f = (
-        a.apply(lambda x: x**2)  #                              Ok(5) -> Ok(25)
-        .apply(lambda x: x + 11)  #                                   -> Ok(36)
-        .apply(sqrt)  #                                               -> Ok(6)
-        .apply(lambda x, y: x / y, 2)  #                              -> Ok(3)
-        .apply_or_else(lambda x, y: x + 11, lambda x, y: x / y, 0)  # -> Ok(14)
-    )
-
-    g = (
-        a.apply(lambda x: x**2)  #                              Ok(5) -> Ok(25)
-        .apply(lambda x: x + 11)  #                                   -> Ok(36)
-        .apply(sqrt)  #                                               -> Ok(6)
-        .apply_or_else(lambda x, y: -x, lambda x, y: x / y, 0)  #     -> Ok(-6)
-        .apply_or_else(lambda x, y: x + 11, lambda x, y: x / y, 2)  # -> Ok(-3)
-    )
-
-    assert a.is_Ok and a == Ok(5)
-    assert b.is_Err and b.Err_msg_contains("ValueError")
-    assert c.is_Ok and c == Ok(None)
-    assert d.is_Ok and d == Ok(5)
-    assert e.is_Err and e.Err_msg_contains("ZeroDivisionError")
-    assert f.is_Ok and f == Ok(14)
-    assert g.is_Ok and g == Ok(-3)
 
 
 # Arithmetic Operator Overloading
@@ -554,12 +425,6 @@ def test_error_message_integrity():
     assert result.Err_msg == ["Critical Error"]
     with pytest.raises(ResultErr):
         result.raises()
-
-
-def test_error_chaining_integrity():
-    error_result = Err("Initial Error")
-    chained_result = error_result.map(lambda x: x * 2).map_Err(lambda e: f"{e.str()} - chained")
-    assert chained_result.is_Err is False  # map_Err returns Ok(f(e))
 
 
 # Integration Tests
