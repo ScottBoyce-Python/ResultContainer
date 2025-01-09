@@ -168,50 +168,70 @@ TRACEBACK_EXCLUDE_FILES = {
 
 EXCLUDE_ATTRIBUTES = {
     "ResultErr",
-    "Ok",
-    "Err",
-    "empty_init",
+    "as_Ok",
+    "as_Err",
+    "_empty_init",
     "is_Ok",
     "is_Err",
+    "Ok",
+    "Err",
     "Err_msg",
     "Err_traceback",
-    "raises",
-    "expect",
-    "expect_Err",
     "unwrap",
     "unwrap_or",
+    "expect",
+    "expect_Err",
+    "raises",
+    "getitem",
+    "setitem",
+    "is_Ok_and",
+    "is_Err_and",
+    "Ok_and",
+    "Ok_or",
+    "inspect",
+    "inspect_apply",
+    "inspect_Err",
     "apply",
     "apply_or",
     "apply_or_else",
     "apply_Err",
+    "apply_map",
     "map",
     "map_or",
     "map_or_else",
     "map_Err",
+    "iter_wrap",
+    "iter_unwrap",
     "iter",
-    "is_Ok_and",
-    "copy",
-    "update_result",
     "Err_msg_contains",
     "add_Err_msg",
+    "update_result",
+    "copy",
     "str",
     "_operator_overload_prep",
-    "_success",
+    "_operator_overload_error",
 }
 
 ATTRIBUTES_MISTAKES = {
     "resulterr": "ResultErr",
-    "ok": "Ok",
-    "err": "Err",
+    "as_ok": "as_Ok",
+    "as_err": "as_Err",
     "is_ok": "is_Ok",
     "is_err": "is_Err",
+    "ok": "Ok",
+    "err": "Err",
     "err_msg": "Err_msg",
     "err_traceback": "Err_traceback",
     "expect_err": "expect_Err",
+    "is_ok_and": "is_Ok_and",
+    "is_err_and": "is_Err_and",
+    "ok_and": "Ok_and",
+    "ok_or": "Ok_or",
+    "inspect_apply": "inspect_apply",
+    "inspect_err": "inspect_Err",
     "apply_err": "apply_Err",
     "map_err": "map_Err",
     "err_msg_contains": "Err_msg_contains",
-    "is_ok_and": "is_Ok_and",
     "add_err_msg": "add_Err_msg",
 }
 
@@ -746,7 +766,7 @@ class Result:
             Returns original Result instance.
               - If ok_func fails, no exception is raised .
 
-        inspect_err(err_func, *args, **kwargs):
+        inspect_Err(err_func, *args, **kwargs):
             If `Err(e)`, then evaluates `err_func(e)`.
             Returns original Result instance.
               - If err_func fails, raises an exception.
@@ -1103,7 +1123,7 @@ class Result:
                 pass
         return self
 
-    def inspect_err(self, err_func, *args, **kwargs):
+    def inspect_Err(self, err_func, *args, **kwargs):
         if not self._success:
             err_func(self._val, *args, **kwargs)
         return self
@@ -1403,17 +1423,22 @@ class Result:
             The result of the attribute wrapped as a Result or modifies underlying value.
         """
         if name in ATTRIBUTES_MISTAKES:
-            self.add_Err_msg(
-                f"Result.{name} is a possible case mistake. Did you mean Result.{ATTRIBUTES_MISTAKES[name]} instead?"
-                f" Or did you forget () on a method or put () on an attrib."
-                f" If Ok(x.{name}) is what you want, then do Ok(x).expect().{name}",
-                _levels=-4,
-            )
-        elif name in EXCLUDE_ATTRIBUTES:
+            attr = getattr(self, ATTRIBUTES_MISTAKES[name])
+            if callable(attr):
+                return lambda *args, **kwargs: attr(*args, **kwargs)
+            return attr
+            # self.add_Err_msg(
+            #     f"Result.{name} is a possible case mistake. Did you mean Result.{ATTRIBUTES_MISTAKES[name]} instead?"
+            #     f" Or did you forget () on a method or put () on an attrib."
+            #     f" If Ok(x.{name}) is what you want, then do Ok(x).expect().{name}",
+            #     _levels=-4,
+            # )
+        if name in EXCLUDE_ATTRIBUTES:
             self.add_Err_msg(
                 f"{name} is an excluded attribute/method."
-                f" Did you forget () on a method or put () on an attrib."
-                f" If Ok(x.{name}) is what you want, then do Ok(x).expect().{name}",
+                f" Did you forget () on a method or put () on an attribute."
+                f" If Ok(x.{name}) is what you want, then do Ok(x).unwrap().{name}",
+                f" or Result(Ok(x).unwrap().{name})",
                 _levels=-4,
             )
         elif self.is_Err:
