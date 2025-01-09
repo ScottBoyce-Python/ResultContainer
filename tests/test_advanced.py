@@ -292,6 +292,177 @@ def test_result_apply_chain():
         )
 
 
+def test_result_method_chain():
+    from math import sqrt
+
+    def div(numerator, denominator):
+        return numerator / denominator
+
+    def plus11(x, *args):
+        # *args not used, but needed because apply_or_else(efunc, ofunc) requires
+        # both functions to have the same arg length, see `apply_or_else(plus11, div, 0)` or `.apply_or_else(plus11, div, 2)`
+        return x + 11
+
+    def pow2(x):
+        return x**2
+
+    def neg(x, *args):
+        # *args not used, but needed because apply_or_else(efunc, ofunc) requires
+        # both functions to have the same arg length, see `.apply_or_else(neg, div, 0)`
+        return -x
+
+    a = Ok(5)
+
+    with pytest.raises(ValueError):
+        fail1 = a.map(pow2).map(plus11).map(sqrt).map(neg).map(sqrt)
+        # 5 -> 25 -> 36 -> 6 -> -6 -> raise ValueError
+
+    with pytest.raises(ValueError):
+        fail2 = a.map(pow2).map(plus11).map(sqrt).map(neg).map_or(None, sqrt)
+        # 5 -> 25 -> 36 -> 6 -> -6 -> raise ValueError
+
+    b = (
+        a.apply(pow2)  # Ok(5) -> Ok(25)
+        .apply(plus11)  #       -> Ok(36)
+        .apply(sqrt)  #         -> Ok(6)
+        .apply(neg)  #          -> Ok(-6)
+        .apply(sqrt)  #         -> Err("Result.apply exception | ValueError: math domain error")
+    )
+
+    c = (
+        a.apply(pow2)  #   Ok(5) -> Ok(25)
+        .apply(plus11)  #        -> Ok(36)
+        .apply(sqrt)  #          -> Ok(6)
+        .apply(neg)  #           -> Ok(-6)
+        .apply_or(None, sqrt)  # -> Ok(None)
+    )
+
+    d = (
+        a.apply(pow2)  #          Ok(5) -> Ok(25)
+        .apply(plus11)  #               -> Ok(36)
+        .apply(sqrt)  #                 -> Ok(6)
+        .apply(neg)  #                  -> Ok(3)
+        .apply_or_else(plus11, sqrt)  # -> Ok(5)
+    )
+
+    e = (
+        a.apply(pow2)  # Ok(5) -> Ok(25)
+        .apply(plus11)  #      -> Ok(36)
+        .apply(sqrt)  #        -> Ok(6)
+        .apply(div, 2)  #      -> Ok(3)
+        .apply(div, 0)  #      -> Err("Result.apply exception | ZeroDivisionError: float division by zero")
+    )
+    # 5 -> 25 -> 36 -> 6 -> 3 -> Err("Result.apply exception | ZeroDivisionError: float division by zero")
+
+    f = (
+        a.apply(pow2)  #            Ok(5) -> Ok(25)
+        .apply(plus11)  #                 -> Ok(36)
+        .apply(sqrt)  #                   -> Ok(6)
+        .apply(div, 2)  #                 -> Ok(3)
+        .apply_or_else(plus11, div, 0)  # -> Ok(14)
+    )
+
+    g = (
+        a.apply(pow2)  #            Ok(5) -> Ok(25)
+        .apply(plus11)  #                 -> Ok(36)
+        .apply(sqrt)  #                   -> Ok(6)
+        .apply_or_else(neg, div, 0)  #    -> Ok(-6)
+        .apply_or_else(plus11, div, 2)  # -> Ok(-3)
+    )
+
+    assert a.is_Ok and a == Ok(5)
+    assert b.is_Err and b.Err_msg_contains("ValueError")
+    assert c.is_Ok and c == Ok(None)
+    assert d.is_Ok and d == Ok(5)
+    assert e.is_Err and e.Err_msg_contains("ZeroDivisionError")
+    assert f.is_Ok and f == Ok(14)
+    assert g.is_Ok and g == Ok(-3)
+
+
+def test_result_method_chain_lambda():
+    from math import sqrt
+    # div    = lambda x, y: x / y
+    # plus11 = lambda x: x + 11
+    # pow2   = lambda x: x**2
+    # neg    = lambda x: -x
+
+    a = Ok(5)
+
+    with pytest.raises(ValueError):
+        fail1 = (
+            a.map(lambda x: x**2)  # Ok(5) -> Ok(25)
+            .map(lambda x: x + 11)  #      -> Ok(36)
+            .map(sqrt)  #                  -> Ok(6)
+            .map(lambda x: -x)  #          -> Ok(-6)
+            .map(sqrt)  #                  -> raise ValueError
+        )
+
+    with pytest.raises(ValueError):
+        fail2 = (
+            a.map(lambda x: x**2)  # Ok(5) -> Ok(25)
+            .map(lambda x: x + 11)  #      -> Ok(36)
+            .map(sqrt)  #                  -> Ok(6)
+            .map(lambda x: -x)  #          -> Ok(-6)
+            .map_or(None, sqrt)  #         -> raise ValueError
+        )
+
+    b = (
+        a.apply(lambda x: x**2)  # Ok(5) -> Ok(25)
+        .apply(lambda x: x + 11)  #      -> Ok(36)
+        .apply(sqrt)  #                  -> Ok(6)
+        .apply(lambda x: -x)  #          -> Ok(-6)
+        .apply(sqrt)  #                  -> Err("Result.apply exception | ValueError: math domain error")
+    )
+
+    c = (
+        a.apply(lambda x: x**2)  # Ok(5) -> Ok(25)
+        .apply(lambda x: x + 11)  #      -> Ok(36)
+        .apply(sqrt)  #                  -> Ok(6)
+        .apply(lambda x: -x)  #          -> Ok(-6)
+        .apply_or(None, sqrt)  #         -> Ok(None)
+    )
+
+    d = (
+        a.apply(lambda x: x**2)  #          Ok(5) -> Ok(25)
+        .apply(lambda x: x + 11)  #               -> Ok(36)
+        .apply(sqrt)  #                           -> Ok(6)
+        .apply(lambda x: -x)  #                   -> Ok(-6)
+        .apply_or_else(lambda x: x + 11, sqrt)  # -> Ok(5)
+    )
+
+    e = (
+        a.apply(lambda x: x**2)  # Ok(5) -> Ok(25)
+        .apply(lambda x: x + 11)  #      -> Ok(36)
+        .apply(sqrt)  #                  -> Ok(6)
+        .apply(lambda x, y: x / y, 2)  # -> Ok(3)
+        .apply(lambda x, y: x / y, 0)  # -> Err("Result.apply exception | ZeroDivisionError: float division by zero")
+    )
+
+    f = (
+        a.apply(lambda x: x**2)  #                              Ok(5) -> Ok(25)
+        .apply(lambda x: x + 11)  #                                   -> Ok(36)
+        .apply(sqrt)  #                                               -> Ok(6)
+        .apply(lambda x, y: x / y, 2)  #                              -> Ok(3)
+        .apply_or_else(lambda x, y: x + 11, lambda x, y: x / y, 0)  # -> Ok(14)
+    )
+
+    g = (
+        a.apply(lambda x: x**2)  #                              Ok(5) -> Ok(25)
+        .apply(lambda x: x + 11)  #                                   -> Ok(36)
+        .apply(sqrt)  #                                               -> Ok(6)
+        .apply_or_else(lambda x, y: -x, lambda x, y: x / y, 0)  #     -> Ok(-6)
+        .apply_or_else(lambda x, y: x + 11, lambda x, y: x / y, 2)  # -> Ok(-3)
+    )
+
+    assert a.is_Ok and a == Ok(5)
+    assert b.is_Err and b.Err_msg_contains("ValueError")
+    assert c.is_Ok and c == Ok(None)
+    assert d.is_Ok and d == Ok(5)
+    assert e.is_Err and e.Err_msg_contains("ZeroDivisionError")
+    assert f.is_Ok and f == Ok(14)
+    assert g.is_Ok and g == Ok(-3)
+
+
 # Arithmetic Operator Overloading
 def test_addition():
     result1 = Ok(10)
