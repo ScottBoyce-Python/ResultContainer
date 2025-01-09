@@ -21,6 +21,7 @@ The `ResultContainer` is designed to streamline error propagation and improve co
 - **Variants for Success and Failure**: Two variants represented in a Result instance, `Ok(value)` for successful outcomes, and `Err(e)` for errors that have resulted. Provides a flexible mechanism for chaining operations on the `Ok` value while propagating errors through `Err`.
 - **Attribute and Method Transparency**: Automatically passes attributes, methods, indices, and math operations to the value contained within an `Ok`, otherwise propagates the `Err(e)`.
 - **Utility Methods**: Implements helper methods for error propagation, transformation, and querying (e.g., `.map()`, `.apply()`, `.unwrap_or()`, `.expect()`, `.raises()`) for concise and readable handling of success and error cases. 
+- **Functional Programming**: Provides an easy way to track errors when method chaining.
 
 ## Installation
 To install the module
@@ -432,7 +433,7 @@ bad_dt.raises()                            # raises a ResultErr exception
 
   
 
-### Passing Functions and Chaining Operations
+### Functions
 
 ```python
 from ResultContainer import Result, Ok, Err
@@ -446,12 +447,200 @@ c = Ok(-9)           # Ok(-9)
 d = c.apply(sqrt)    # Err("Result.apply exception. | ValueError: math domain error")
 e = sqrt(c.expect()) # raises an error
 
-plus1 = lambda x: x + 1
-a = Ok(5)
-b = Ok(0)
-c = (a / b).map_or(10, plus1).map_or(20, plus1).map_or(30, plus1) # c = Err() -> Ok(10) -> Ok(11) -> Ok(12)
-d = (a / 0).map_or(10, plus1).map_or(20, plus1).map_or(30, plus1) # d = Err() -> Ok(10) -> Ok(11) -> Ok(12)
 
+```
+
+  
+
+### Method Chaining
+
+```python
+from ResultContainer import Result, Ok, Err
+from math import sqrt
+
+plus1 = lambda x: x + 1
+a = Ok(2)
+b = (a / 0).map_or(10, plus1).map_or(20, plus1).map_or(30, plus1) # Err(div/0) -> Ok(10) -> Ok(11) -> Ok(12)
+
+```
+
+  
+
+
+#### Function Chaining
+
+```python
+from ResultContainer import Result, Ok, Err
+from math import sqrt
+
+# Some functions include `*args` because `apply_or_else(err_func, ok_func)` requires
+# that both the err_func and ok_func have the same argument length.
+# The *args serves as a place holder to catch the unused extra argument.
+#
+# For example: `Ok(10).apply_or_else(plus11, div, 2)`
+#   first evaluates:                        `div(10, 2)`
+#   and if the function fails, tries:     `plus11(10, 2)`
+#   where the `2` must be passed, but is not part of the method
+
+def div(x, y):        return x / y
+
+def pow2(x):          return x**2
+
+def plus11(x, *args): return x + 11  # *args is ignored
+
+def neg(x, *args):    return -x      # *args is ignored
+
+a = Ok(5)
+
+# ----------------------------------------------------------------------
+# The `map` methods raise an exception if the function fails:
+#
+fail1 = a.map(pow2).map(plus11).map(sqrt).map(neg).map(sqrt)
+#       5     -> 25       -> 36     -> 6     -> -6 -> raise ValueError
+
+fail2 = a.map(pow2).map(plus11).map(sqrt).map(neg).map_or(None, sqrt)
+#       5     -> 25       -> 36     -> 6     -> -6 -> raise ValueError
+# ----------------------------------------------------------------------
+#
+# Apply returns an Err() if the function fails
+# 	Note, the methods have been split over multiple lines
+#
+b = (
+    a.apply(pow2)  # Ok(5) -> Ok(25)
+    .apply(plus11) #       -> Ok(36)
+    .apply(sqrt)   #       -> Ok(6)
+    .apply(neg)    #       -> Ok(-6)
+    .apply(sqrt)   #       -> Err("Result.apply exception | ValueError: math domain error") = b
+)
+
+c = (
+    a.apply(pow2)  #  Ok(5) -> Ok(25)
+    .apply(plus11) #        -> Ok(36)
+    .apply(sqrt)   #        -> Ok(6)
+    .apply(neg)    #        -> Ok(-6)
+    .apply_or(None, sqrt) # -> Ok(None) = c
+)
+
+d = (
+    a.apply(pow2)   #        Ok(5) -> Ok(25)
+    .apply(plus11)     #           -> Ok(36)
+    .apply(sqrt)          #        -> Ok(6)
+    .apply(neg)              #     -> Ok(3)
+    .apply_or_else(plus11, sqrt) # -> Ok(5) = d
+)
+
+e = (
+    a.apply(pow2)  # Ok(5) -> Ok(25)
+    .apply(plus11) #       -> Ok(36)
+    .apply(sqrt)   #       -> Ok(6)
+    .apply(div, 2) #       -> Ok(3)
+    .apply(div, 0) #       -> Err("Result.apply exception | ZeroDivisionError: float division by zero") = e
+)
+
+f = (
+    a.apply(pow2)  #           Ok(5) -> Ok(25)
+    .apply(plus11)     #             -> Ok(36)
+    .apply(sqrt)           #         -> Ok(6)
+    .apply(div, 2)             #     -> Ok(3)
+    .apply_or_else(plus11, div, 0) # -> Ok(14) = f
+)
+
+g = (
+    a.apply(pow2)   #          Ok(5) -> Ok(25)
+    .apply(plus11)      #            -> Ok(36)
+    .apply(sqrt)            #        -> Ok(6)
+    .apply_or_else(neg, div, 0) #    -> Ok(-6)
+    .apply_or_else(plus11, div, 2) # -> Ok(-3) = g
+)
+```
+
+  
+
+
+#### Anonymous Function Chaining
+
+```python
+# Note, the chain methods have been split over multiple lines
+from ResultContainer import Result, Ok, Err
+from math import sqrt
+
+# div    = lambda x, y: x / y
+# pow2   = lambda x: x**2
+# plus11 = lambda x: x + 11
+# neg    = lambda x: -x
+
+a = Ok(5)
+
+# ----------------------------------------------------------------------
+# The `map` methods raise an exception if the function fails:
+#
+fail1 = (
+    a.map(lambda x: x**2)  # Ok(5) -> Ok(25)
+    .map(lambda x: x + 11) #      -> Ok(36)
+    .map(sqrt)             #       -> Ok(6)
+    .map(lambda x: -x)     #       -> Ok(-6)
+    .map(sqrt)             #       -> raise ValueError
+)
+
+fail2 = (
+    a.map(lambda x: x**2)  # Ok(5) -> Ok(25)
+    .map(lambda x: x + 11) #       -> Ok(36)
+    .map(sqrt)             #       -> Ok(6)
+    .map(lambda x: -x)     #       -> Ok(-6)
+    .map_or(None, sqrt)    #       -> raise ValueError
+)
+# ----------------------------------------------------------------------
+#
+# Apply returns an Err() if the function fails
+
+#
+b = (
+    a.apply(lambda x: x**2)  # Ok(5) -> Ok(25)
+    .apply(lambda x: x + 11) #       -> Ok(36)
+    .apply(sqrt)             #       -> Ok(6)
+    .apply(lambda x: -x)     #       -> Ok(-6)
+    .apply(sqrt)             #       -> Err("Result.apply exception | ValueError: math domain error") = b
+)
+
+c = (
+    a.apply(lambda x: x**2)  # Ok(5) -> Ok(25)
+    .apply(lambda x: x + 11) #       -> Ok(36)
+    .apply(sqrt)             #       -> Ok(6)
+    .apply(lambda x: -x)     #       -> Ok(-6)
+    .apply_or(None, sqrt)    #       -> Ok(None) = c
+)
+
+d = (
+    a.apply(lambda x: x**2)   #        Ok(5) -> Ok(25)
+    .apply(lambda x: x + 11)     #           -> Ok(36)
+    .apply(sqrt)                    #        -> Ok(6)
+    .apply(lambda x: -x)               #     -> Ok(-6)
+    .apply_or_else(lambda x: x + 11, sqrt) # -> Ok(5) = d
+)
+
+e = (
+    a.apply(lambda x: x**2) # Ok(5) -> Ok(25)
+    .apply(lambda x: x + 11)  #     -> Ok(36)
+    .apply(sqrt)                #   -> Ok(6)
+    .apply(lambda x, y: x / y, 2) # -> Ok(3)
+    .apply(lambda x, y: x / y, 0) # -> Err("Result.apply exception | ZeroDivisionError: float division by zero") = e
+)
+
+f = (
+    a.apply(lambda x: x**2)       #                         Ok(5) -> Ok(25)
+    .apply(lambda x: x + 11)      #                               -> Ok(36)
+    .apply(sqrt)                  #                               -> Ok(6)
+    .apply(lambda x, y: x / y, 2) #                               -> Ok(3)
+    .apply_or_else(lambda x, y: x + 11, lambda x, y: x / y, 0)  # -> Ok(14) = f
+)
+
+g = (
+    a.apply(lambda x: x**2)   #                            Ok(5) -> Ok(25)
+    .apply(lambda x: x + 11)  #                                  -> Ok(36)
+    .apply(sqrt)              #                                  -> Ok(6)
+    .apply_or_else(lambda x, y: -x, lambda x, y: x / y, 0)     # -> Ok(-6)
+    .apply_or_else(lambda x, y: x + 11, lambda x, y: x / y, 2) # -> Ok(-3)
+)
 ```
 
   
