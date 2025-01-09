@@ -96,7 +96,7 @@ with an interface that resembles Rust's `Result` type.
 
 # %% -----------------------------------------------------------------------------------------------
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"
 __author__ = "Scott E. Boyce"
 __credits__ = "Scott E. Boyce"
 __maintainer__ = "Scott E. Boyce"
